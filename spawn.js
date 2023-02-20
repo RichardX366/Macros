@@ -1,0 +1,26 @@
+const { wait, click, hold, tap, holdMultiple } = require('.');
+
+hold('right', 80);
+hold('s', 100);
+hold('a', 400);
+hold('w', 1300);
+hold('d', 50);
+holdMultiple(['w', 'space'], 4000);
+holdMultiple(['d', 'space'], 500);
+hold('d', 1000);
+hold('w', 1500);
+holdMultiple(['w', 'space'], 500);
+hold('w', 5000);
+hold('left', 770);
+hold('w', 1600);
+holdMultiple(['w', 'space'], 500);
+hold('w', 7000);
+hold('d', 1000);
+hold('w', 1500);
+hold('left', 750);
+hold('w', 6600);
+hold('right', 750);
+hold('w', 4000);
+holdMultiple(['w', 'space'], 500);
+hold('w', 3000);
+hold('d', 3000);
