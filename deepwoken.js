@@ -44,3 +44,5 @@ click(850, 560);
 click(540, 425);
 click(850, 560);
 click(720, 745);
+wait(1000);
+// Play sound

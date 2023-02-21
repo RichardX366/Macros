@@ -39,10 +39,13 @@ sprint('w', 900);
 sprint('d', 1500);
 tap('e');
 tap('tab');
-drag(590, 950, 190, 160);
+drag(470, 800, 190, 150);
 click(270, 140);
 tap('e');
 tap('tab');
 sprint('a', 1250);
 sprint('s', 2000);
 sprint('a', 2000);
+wait(15000);
+click(800, 500);
+// Play sound
