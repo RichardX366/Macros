@@ -43,3 +43,15 @@ const tap = (key) => {
   wait(300);
 };
 exports.tap = tap;
+
+const drag = (x1, y1, x2, y2) => {
+  robot.moveMouse(x1, y1);
+  wait(50);
+  robot.mouseToggle('down');
+  wait(50);
+  robot.moveMouseSmooth(x2, y2, 1);
+  wait(50);
+  robot.mouseToggle('up');
+  wait(100);
+};
+exports.drag = drag;

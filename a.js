@@ -1,4 +1,4 @@
-const { wait, click, hold, tap, holdMultiple, sprint } = require('.');
+const { wait, click, hold, tap, holdMultiple, sprint, drag } = require('.');
 
 wait(1000);
-sprint('s', 1700);
+sprint('s', 2000);
