@@ -49,4 +49,5 @@ sprint('s', 2000);
 sprint('a', 2000);
 wait(15000);
 click(800, 500);
+wait(5000);
 execSync('afplay ding.mp3');
