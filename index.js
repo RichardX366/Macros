@@ -40,7 +40,7 @@ exports.holdMultiple = holdMultiple;
 
 const tap = (key) => {
   robot.keyTap(key);
-  wait(300);
+  wait(350);
 };
 exports.tap = tap;
 
