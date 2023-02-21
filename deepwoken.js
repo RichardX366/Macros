@@ -1,4 +1,5 @@
 const { wait, click, hold, tap, sprint } = require('.');
+const { execSync } = require('child_process');
 
 sprint('a', 400);
 sprint('s', 2000);
@@ -45,4 +46,4 @@ click(540, 425);
 click(850, 560);
 click(720, 745);
 wait(1000);
-// Play sound
+execSync('afplay ding.mp3');
