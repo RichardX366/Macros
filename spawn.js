@@ -44,7 +44,7 @@ drag(470, 800, 190, 150);
 click(270, 140);
 tap('e');
 tap('tab');
-sprint('a', 1260);
+sprint('a', 1300);
 sprint('s', 2500);
 sprint('a', 1700);
 wait(16000);
