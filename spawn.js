@@ -47,7 +47,7 @@ tap('tab');
 sprint('a', 1260);
 sprint('s', 2500);
 sprint('a', 1700);
-wait(15000);
+wait(16000);
 click(800, 500);
 wait(5000);
 execSync('afplay ding.mp3');
