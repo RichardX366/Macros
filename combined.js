@@ -6,7 +6,6 @@ const {
   holdMultiple,
   sprint,
   drag,
-  toBrightness,
   getCannyPixel,
   closeEnough,
   exit,
@@ -80,6 +79,22 @@ const overworld = [
       sprint('s', 1050);
       sprint('d', 450);
       sprint('w', 400);
+      wait(500);
+      hold('s', 300);
+      hold('d', 650);
+      sprint('w', 600);
+      sprint('d', 1000);
+      sprint('w', 500);
+    },
+  },
+  {
+    x: 160,
+    y: 647,
+    boundary: 0.2,
+    movement: () => {
+      sprint('s', 800);
+      sprint('a', 650);
+      sprint('w', 500);
       wait(500);
       hold('s', 300);
       hold('d', 650);
