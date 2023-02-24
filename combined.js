@@ -104,7 +104,7 @@ const depths = [
     y: 363,
     boundary: 0.07,
     movement: () => {
-      sprint('a', 5000);
+      sprint('a', 10000);
     },
   },
   {
@@ -119,6 +119,14 @@ const depths = [
     x: 1360,
     y: 481,
     boundary: 0.07,
+    movement: () => {
+      sprint('w', 5000);
+    },
+  },
+  {
+    x: 573,
+    y: 120,
+    boundary: 0.05,
     movement: () => {
       sprint('w', 5000);
     },
@@ -140,12 +148,29 @@ const depths = [
     },
   },
   {
+    x: 1190,
+    y: 473,
+    boundary: 0.1,
+    movement: () => {
+      sprint('d', 5000);
+    },
+  },
+  {
     x: 940,
     y: 111,
     boundary: 0.1,
     movement: () => {
-      sprint('w', 5000);
-      wait(20000);
+      sprint('w', 3000);
+      sprint('d', 1000);
+      sprint('w', 8000);
+    },
+  },
+  {
+    x: 60,
+    y: 113,
+    boundary: 0.15,
+    movement: () => {
+      sprint('a', 5000);
     },
   },
 ];
@@ -232,7 +257,7 @@ while (true) {
     if (i === 59) exit();
     wait(500);
   }
-  waitUntil(() => toBrightness(robot.getPixelColor(710, 130)) > 0.7, 60 * 3);
+  waitUntil(() => closeEnough(robot.getPixelColor(710, 130), 'dad4c4'), 60 * 3);
   wait(5000);
   sprint('a', 400);
   sprint('s', 2000);

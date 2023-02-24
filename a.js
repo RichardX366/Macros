@@ -11,4 +11,5 @@ const {
 const robot = require('robotjs');
 
 wait(1000);
-console.log(getCannyPixel(1200, 380));
+console.log(robot.getPixelColor(710, 130));
+console.log(getCannyPixel(1190, 473));
