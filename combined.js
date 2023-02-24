@@ -8,9 +8,11 @@ const {
   drag,
   toBrightness,
 } = require('.');
-const { execSync } = require('child_process');
 const robot = require('robotjs');
-// execSync('afplay ding.mp3');
+
+const overworld = [{ x: 470, y: 800, boundary: 0.1, movement: () => {} }];
+
+const depths = [{ x: 470, y: 800, boundary: 0.1, movement: () => {} }];
 
 // MUST be triggered by terminal no shortcut
 wait(1000);
