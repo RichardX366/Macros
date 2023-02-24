@@ -1,5 +1,6 @@
 const robot = require('robotjs');
 const sleep = require('sleep');
+const { execSync } = require('child_process');
 
 const sigmoid = (x) => (1 / (1 + Math.exp(-x)) - 0.5) * 3.5;
 const sigmoidLoop = (x, n) => (n === 0 ? x : sigmoidLoop(sigmoid(x), n - 1));
@@ -65,6 +66,33 @@ const drag = (x1, y1, x2, y2) => {
   wait(100);
 };
 exports.drag = drag;
+
+const exit = () => {
+  execSync('afplay ding.mp3');
+  process.exit();
+};
+exports.exit = exit;
+
+const waitUntil = (func, timeout = 30) => {
+  for (let i = 0; i < timeout * 2 && !func(); i++) {
+    if (i === timeout * 2 - 1) exit();
+    wait(500);
+  }
+};
+exports.waitUntil = waitUntil;
+
+const closeEnough = (color1, color2) => {
+  const r1 = parseInt(color1.slice(0, 2), 16);
+  const g1 = parseInt(color1.slice(2, 4), 16);
+  const b1 = parseInt(color1.slice(4, 6), 16);
+  const r2 = parseInt(color2.slice(0, 2), 16);
+  const g2 = parseInt(color2.slice(2, 4), 16);
+  const b2 = parseInt(color2.slice(4, 6), 16);
+  return (
+    Math.abs(r1 - r2) < 10 && Math.abs(g1 - g2) < 10 && Math.abs(b1 - b2) < 10
+  );
+};
+exports.closeEnough = closeEnough;
 
 const getBW = (x, y, width = 40, height = 40) => {
   const capture = robot.screen.capture(

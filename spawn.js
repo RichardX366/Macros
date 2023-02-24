@@ -1,4 +1,14 @@
-const { wait, click, hold, tap, holdMultiple, sprint, drag } = require('.');
+const {
+  wait,
+  click,
+  hold,
+  tap,
+  holdMultiple,
+  sprint,
+  drag,
+  waitUntil,
+  closeEnough,
+} = require('.');
 const { execSync } = require('child_process');
 const robot = require('robotjs');
 
@@ -17,7 +27,7 @@ sprint('a', 1700);
 sprint('w', 3000);
 sprint('d', 300);
 sprint('w', 2500);
-hold('a', 300);
+hold('a', 500);
 tap('e');
 wait(200);
 tap('e');
@@ -39,16 +49,18 @@ sprint('s', 1500);
 sprint('a', 500);
 sprint('s', 300);
 sprint('d', 2600);
-sprint('w', 900);
+holdMultiple(['w', 'space'], 400);
+sprint('w', 800);
 sprint('d', 1500);
 tap('tab');
 drag(470, 800, 190, 150);
 click(270, 140);
 tap('tab');
-sprint('a', 1300);
+sprint('a', 1500);
 sprint('s', 2500);
 sprint('a', 1700);
-while (robot.getPixelColor(912, 438) !== 'c6dee2') wait(500);
+wait(12000);
+waitUntil(() => closeEnough(robot.getPixelColor(920, 315), 'c5dee2'));
 wait(2000);
 click(800, 500);
 wait(10000);
