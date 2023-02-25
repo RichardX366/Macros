@@ -147,6 +147,14 @@ const depths = [
     },
   },
   {
+    x: 860,
+    y: 284,
+    boundary: 0.07,
+    movement: () => {
+      sprint('w', 5000);
+    },
+  },
+  {
     x: 1200,
     y: 380,
     boundary: 0.1,
