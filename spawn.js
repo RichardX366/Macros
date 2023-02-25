@@ -26,7 +26,7 @@ sprint('w', 1950);
 sprint('a', 1700);
 sprint('w', 3000);
 sprint('d', 300);
-sprint('w', 2500);
+sprint('w', 2550);
 hold('a', 500);
 tap('e');
 wait(200);

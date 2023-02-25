@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 
 wait(300);
 
-const [x, y] = [169, 645];
+const [x, y] = [1157, 374];
 
 writeFileSync(
   'data.json',

@@ -175,9 +175,16 @@ const depths = [
     y: 111,
     boundary: 0.1,
     movement: () => {
-      sprint('w', 3000);
-      sprint('d', 1000);
-      sprint('w', 8000);
+      sprint('d', 1500);
+      sprint('w', 9000);
+    },
+  },
+  {
+    x: 1156,
+    y: 373,
+    boundary: 0.1,
+    movement: () => {
+      sprint('a', 5000);
     },
   },
   {
@@ -223,7 +230,7 @@ while (true) {
   sprint('a', 1700);
   sprint('w', 3000);
   sprint('d', 300);
-  sprint('w', 2500);
+  sprint('w', 2550);
   hold('a', 500);
   tap('e');
   wait(200);
