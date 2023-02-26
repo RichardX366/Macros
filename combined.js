@@ -163,6 +163,14 @@ const depths = [
     },
   },
   {
+    x: 1360,
+    y: 389,
+    boundary: 0.05,
+    movement: () => {
+      sprint('d', 5000);
+    },
+  },
+  {
     x: 1300,
     y: 481,
     boundary: 0.1,
