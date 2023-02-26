@@ -75,7 +75,7 @@ const overworld = [
     y: 376,
     boundary: 0.2,
     movement: () => {
-      hold('d', 150);
+      hold('d', 100);
       sprint('s', 1050);
       sprint('d', 450);
       sprint('w', 400);
