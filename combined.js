@@ -78,7 +78,7 @@ const overworld = [
       hold('d', 100);
       sprint('s', 1050);
       sprint('d', 450);
-      sprint('w', 400);
+      sprint('w', 450);
       wait(500);
       hold('s', 300);
       hold('d', 650);
