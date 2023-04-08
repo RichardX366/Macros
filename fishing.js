@@ -1,23 +1,23 @@
-const { wait, closeEnough, findColor } = require('.');
+const { wait, closeEnough, findColor, tap, exit } = require('.');
 const robot = require('robotjs');
 
 const main = () => {
   let caught = 0;
-  let notFountLoops = 0;
+  let notFoundLoops = 1;
 
   while (true) {
-    if (closeEnough(robot.getPixelColor(1250, 200), 'e1473f', 20)) {
+    if (closeEnough(robot.getPixelColor(1060, 190), 'e1473f', 20)) {
       wait(100);
-      notFountLoops = 0;
+      notFoundLoops = 1;
       let timesClicked = 0;
-      while (!findColor('fffd54', 1590, 810, 100)) {
+      while (!findColor('fffd54', 1350, 690, 100)) {
         robot.mouseClick();
         wait(50);
         timesClicked++;
         if (timesClicked === 99) return main();
       }
       caught++;
-      if (caught === 10) {
+      if (caught === 30) {
         caught = 0;
         tap('0');
         wait(200);
@@ -28,10 +28,12 @@ const main = () => {
       wait(500);
       robot.mouseClick();
     }
-    notFountLoops++;
-    if (notFountLoops === 1000) {
-      notFountLoops = 0;
+    notFoundLoops++;
+    if (!notFoundLoops % 1000) {
       robot.mouseClick();
+    }
+    if (notFoundLoops === 3000) {
+      exit();
     }
     wait(50);
   }
