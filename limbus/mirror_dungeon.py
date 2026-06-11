@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from time import sleep
 from typing import cast
 
@@ -476,9 +477,25 @@ def run():
     sleep(3)
 
 
-def main():
-    run()
-
-
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser()
+    parser.add_argument("-n", "--runs", type=int, default=0)
+    parser.add_argument("-i", "--infinite", type=bool, default=False)
+    args = parser.parse_args()
+
+    if args.runs == 0 and not args.infinite:
+        print("Which would you like to do?")
+        print("1. Run infinitely (just type nothing and press enter)")
+        print("2. Run a specific number of times (type the number and press enter)")
+        choice = input()
+        if choice.strip() == "":
+            args.infinite = True
+        else:
+            args.runs = int(choice)
+
+    if args.infinite:
+        while True:
+            run()
+    else:
+        for _ in range(args.runs):
+            run()
