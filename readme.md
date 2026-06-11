@@ -5,6 +5,7 @@ This is a collection of my macros.
 ## Python
 
 For window helper/most of the Python scripts, the only thing you really have to modify should be the DPI scaling factor.
+Run child programs with `python -m <filename>` to avoid issues with imports.
 
 ## Installation
 
