@@ -1,0 +1,9 @@
+easyocr
+matplotlib
+mss
+numpy
+opencv-python
+Pillow
+PyAutoGUI
+PyGetWindow
+rapidfuzz

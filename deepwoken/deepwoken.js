@@ -1,4 +1,4 @@
-const { wait, click, hold, tap, sprint } = require('.');
+const { wait, click, hold, tap, sprint } = require('..');
 const { execSync } = require('child_process');
 
 wait(12000);

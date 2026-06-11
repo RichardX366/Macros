@@ -1,4 +1,4 @@
-const { wait, closeEnough, findColor, tap, exit } = require('.');
+const { wait, closeEnough, findColor, tap, exit } = require('..');
 const robot = require('robotjs');
 
 const main = () => {

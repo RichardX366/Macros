@@ -10,7 +10,7 @@ const {
   closeEnough,
   exit,
   waitUntil,
-} = require('.');
+} = require('..');
 const robot = require('robotjs');
 
 const overworld = [

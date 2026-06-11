@@ -1,4 +1,4 @@
-const { getCannyPixel, wait } = require('.');
+const { getCannyPixel, wait } = require('..');
 
 wait(1000);
 

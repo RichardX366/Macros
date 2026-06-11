@@ -8,7 +8,7 @@ const {
   drag,
   waitUntil,
   closeEnough,
-} = require('.');
+} = require('..');
 const { execSync } = require('child_process');
 const robot = require('robotjs');
 
