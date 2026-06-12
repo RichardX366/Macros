@@ -182,7 +182,11 @@ def handle_shop():
     sleep(1.0)
     press("enter")
     sleep(1.0)
-    fight()
+    result = fight()
+    if result == "Dungeon Complete":
+        global floor_complete
+        floor_complete = True
+        return result
     sleep(5)
 
     if wh.click_text(
@@ -391,7 +395,7 @@ def fight():
             retry=False,
         ):
             print("Dungeon Complete")
-            return
+            return "Dungeon Complete"
 
         sleep(1)
 
@@ -454,15 +458,17 @@ def handle_encounter():
 def complete_floor():
     global floor_complete
     while not floor_complete:
-        handle_encounter()
+        result = handle_encounter()
+        if result == "Dungeon Complete":
+            return result
     floor_complete = False
 
 
 def run():
     print("Begin Run")
     enter()
-    for _ in range(5):
-        complete_floor()
+    while complete_floor() != "Dungeon Complete":
+        pass
     wh.click_text("Confirm", top=0.7, left=0.8, height=0.2)
     sleep(0.5)
     wh.click_text("Claim", top=0.7, left=0.8, height=0.2)
