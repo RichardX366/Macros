@@ -25,7 +25,9 @@ if __name__ == "__main__":
     print("Win rate ready. Press Ctrl + \\ to toggle volume.")
 
     while True:
-        if wh.click_text("Win", top=0.7, left=0.7, height=0.2, click=False):
+        if wh.click_text(
+            "Win", top=0.7, left=0.7, height=0.2, click=False, retry=False
+        ):
             wh.focus_window()
             sleep(0.2)
             press("p")
