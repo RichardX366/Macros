@@ -19,7 +19,13 @@ for session in sessions:
 def worker():
     while True:
         if wh.click_text(
-            "Win", top=0.7, left=0.7, height=0.2, click=False, retry=False
+            "Win",
+            top=0.7,
+            left=0.5,
+            height=0.2,
+            click=False,
+            retry=False,
+            includes=True,
         ):
             wh.focus_window()
             sleep(0.2)
