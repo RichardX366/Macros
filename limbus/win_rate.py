@@ -45,7 +45,7 @@ def toggle_volume():
 if __name__ == "__main__":
     keyboard.add_hotkey("ctrl+\\", lambda: toggle_volume(), suppress=True)
 
-    wh = WindowHelper("LimbusCompany", 1.5)
+    wh = WindowHelper("LimbusCompany")
 
     print(
         "Win rate ready. Press Ctrl + \\ or press enter in the terminal to toggle volume."

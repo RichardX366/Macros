@@ -10,7 +10,7 @@ from helpers import WindowHelper
 
 
 def main():
-    wh = WindowHelper("LimbusCompany", 1.5)
+    wh = WindowHelper("LimbusCompany")
 
     parser = ArgumentParser()
     parser.add_argument("-t", "--top", type=float, default=0.0)

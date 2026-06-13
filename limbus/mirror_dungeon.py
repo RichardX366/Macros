@@ -6,7 +6,7 @@ from pyautogui import press
 
 from helpers import WindowHelper, bounding_box_center
 
-wh = WindowHelper("LimbusCompany", 1.5)
+wh = WindowHelper("LimbusCompany")
 
 floor_complete = False
 

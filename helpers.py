@@ -1,6 +1,5 @@
 from json import dumps, loads
 
-from pyautogui import moveTo, mouseDown, mouseUp, position, click
 from math import exp
 from time import sleep
 from typing import cast
@@ -59,21 +58,93 @@ def clicks(func):
     return wrapper
 
 
+def get_dpi(x, y):
+    import ctypes
+
+    if not hasattr(ctypes, "windll"):
+        return 1.0  # Assume 96 DPI (100% scaling) on non-Windows platforms
+
+    from ctypes import WINFUNCTYPE, byref, c_uint, wintypes, windll, c_int, POINTER
+
+    windll.shcore.SetProcessDpiAwareness(2)
+
+    MONITORENUMPROC = WINFUNCTYPE(
+        c_int,
+        wintypes.HMONITOR,
+        wintypes.HDC,
+        POINTER(wintypes.RECT),
+        wintypes.LPARAM,
+    )
+
+    monitors = []
+
+    def callback(hMonitor, hdcMonitor, lprcMonitor, dwData):
+        dpi_x = c_uint()
+        dpi_y = c_uint()
+
+        windll.shcore.GetDpiForMonitor(
+            hMonitor,
+            0,
+            byref(dpi_x),
+            byref(dpi_y),
+        )
+
+        rect = lprcMonitor.contents
+
+        monitors.append(
+            {
+                "left": rect.left,
+                "top": rect.top,
+                "right": rect.right,
+                "bottom": rect.bottom,
+                "dpi": dpi_x.value,
+                "scale_percent": dpi_x.value / 96,
+            }
+        )
+
+        return 1
+
+    def point_in_rect(x, y, rect):
+        return rect["left"] <= x < rect["right"] and rect["top"] <= y < rect["bottom"]
+
+    windll.user32.EnumDisplayMonitors(0, 0, MONITORENUMPROC(callback), 0)
+
+    for m in monitors:
+        if point_in_rect(x, y, m):
+            return m["scale_percent"]
+
+    return 1.0
+
+
 class WindowHelper:
-    def __init__(self, title: str, dpi=1.0):
+    def __init__(self, title: str, dpi=0.0):
         self.sct = mss.MSS()
-        self.window = gw.getWindowsWithTitle(title)[0]
+
+        if dpi == 0.0:
+            dpi = get_dpi(self.window.center.x, self.window.center.y)
+
         self.bounds = None
         self.ocr_cache = None
         self.old_pointer_pos = None
         self.dpi = dpi
 
-        if self.window is None:
-            print(f"{title} window not found!")
-            raise Exception(f"{title} window not found!")
+        if "getWindowsWithTitle" in dir(gw):
+            self.window = gw.getWindowsWithTitle(title)[0]  # type: ignore
 
-        self.width = self.window.width * dpi
-        self.height = self.window.height * dpi
+            if self.window is None:
+                print(f"{title} window not found!")
+                raise Exception(f"{title} window not found!")
+
+            self.width = self.window.width * dpi
+            self.height = self.window.height * dpi
+            self.top = self.window.top
+            self.left = self.window.left
+        else:
+            top, left, width, height = gw.getWindowsGeometry(title)  # type: ignore
+            self.width = width * dpi
+            self.height = height * dpi
+            self.top = top
+            self.left = left
 
         _ = self.screenshot()
         del _
@@ -93,8 +164,8 @@ class WindowHelper:
         """
         try:
             # Get window coordinates and account for DPI scaling
-            left = int(self.window.left)
-            top = int(self.window.top)
+            left = int(self.left)
+            top = int(self.top)
             width = int(self.width)
             height = int(self.height)
 
@@ -201,12 +272,14 @@ class WindowHelper:
                 x = (self.bounds[0] // self.dpi) + x
                 y = (self.bounds[1] // self.dpi) + y
         elif relative:
-            x = int(x * self.window.width)
-            y = int(y * self.window.height)
-        return x + self.window.left, y + self.window.top
+            x = int(x * self.width / self.dpi)
+            y = int(y * self.height / self.dpi)
+        return x + self.left, y + self.top
 
     @clicks
     def click(self, x, y, relative=False, pre_click_delay=0.0, post_click_delay=0.2):
+        from pyautogui import moveTo, position, click
+
         x, y = self.to_relative(x, y, relative)
 
         self.old_pointer_pos = position()
@@ -227,6 +300,8 @@ class WindowHelper:
             self.old_pointer_pos = None
 
     def drag(self, x1, y1, x2, y2, duration=0.5, relative=False):
+        from pyautogui import moveTo, position
+
         x1, y1 = self.to_relative(x1, y1, relative)
         x2, y2 = self.to_relative(x2, y2, relative)
 
@@ -355,7 +430,7 @@ class WindowHelper:
         if self.bounds:
             height = self.bounds[3] - self.bounds[1]
         else:
-            height = self.window.height
+            height = self.height // self.dpi
 
         text = loads(dumps(convert(text)))
         new_text = []
@@ -472,6 +547,8 @@ def _focus_window(window):
 
 
 def drag(x1, y1, x2, y2, duration=0.5):
+    from pyautogui import moveTo, mouseDown, mouseUp
+
     # Use pyautogui to perform a smooth drag
     moveTo(int(x1), int(y1))
     sleep(0.5)
