@@ -4,7 +4,7 @@ from helpers import WindowHelper, download_screenshot
 
 
 def main():
-    wh = WindowHelper("LimbusCompany")
+    wh = WindowHelper("Phone Mirroring ")
     parser = ArgumentParser()
     parser.add_argument("-t", "--top", type=float, default=0.0)
     parser.add_argument("-l", "--left", type=float, default=0.0)

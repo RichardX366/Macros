@@ -64,7 +64,7 @@ def get_dpi(x, y):
     if not hasattr(ctypes, "windll"):
         return 1.0  # Assume 96 DPI (100% scaling) on non-Windows platforms
 
-    from ctypes import WINFUNCTYPE, byref, c_uint, wintypes, windll, c_int, POINTER
+    from ctypes import WINFUNCTYPE, byref, c_uint, wintypes, windll, c_int, POINTER  # type: ignore
 
     windll.shcore.SetProcessDpiAwareness(2)
 
@@ -120,13 +120,9 @@ class WindowHelper:
     def __init__(self, title: str, dpi=0.0):
         self.sct = mss.MSS()
 
-        if dpi == 0.0:
-            dpi = get_dpi(self.window.center.x, self.window.center.y)
-
         self.bounds = None
         self.ocr_cache = None
         self.old_pointer_pos = None
-        self.dpi = dpi
 
         if "getWindowsWithTitle" in dir(gw):
             self.window = gw.getWindowsWithTitle(title)[0]  # type: ignore
@@ -135,16 +131,23 @@ class WindowHelper:
                 print(f"{title} window not found!")
                 raise Exception(f"{title} window not found!")
 
+            if dpi == 0.0:
+                dpi = get_dpi(self.window.center.x, self.window.center.y)
+
             self.width = self.window.width * dpi
             self.height = self.window.height * dpi
             self.top = self.window.top
             self.left = self.window.left
         else:
-            top, left, width, height = gw.getWindowsGeometry(title)  # type: ignore
+            if dpi == 0.0:
+                dpi = 1.0
+            left, top, width, height = gw.getWindowGeometry(title)  # type: ignore
             self.width = width * dpi
             self.height = height * dpi
             self.top = top
             self.left = left
+
+        self.dpi = dpi
 
         _ = self.screenshot()
         del _
@@ -256,9 +259,9 @@ class WindowHelper:
     def restore_previous_window(self):
         if self.current_window is not None:
             try:
-                if self.current_window.isMinimized:
-                    self.current_window.restore()
-                self.current_window.activate()
+                if self.current_window.isMinimized:  # type: ignore
+                    self.current_window.restore()  # type: ignore
+                self.current_window.activate()  # type: ignore
             except Exception as e:
                 print(f"Error restoring previous window: {e}")
                 raise
