@@ -2,10 +2,13 @@ from threading import Thread
 from time import sleep
 from typing import Any
 
-from pyautogui import press
 from helpers import WindowHelper
 import keyboard
 from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
+
+wh = WindowHelper("LimbusCompany")
+
+from pyautogui import press
 
 sessions = AudioUtilities.GetAllSessions()
 volume: Any = None
@@ -44,8 +47,6 @@ def toggle_volume():
 
 if __name__ == "__main__":
     keyboard.add_hotkey("ctrl+\\", lambda: toggle_volume(), suppress=True)
-
-    wh = WindowHelper("LimbusCompany")
 
     print(
         "Win rate ready. Press Ctrl + \\ or press enter in the terminal to toggle volume."

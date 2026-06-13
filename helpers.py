@@ -58,66 +58,8 @@ def clicks(func):
     return wrapper
 
 
-def get_dpi(x, y):
-    import ctypes
-
-    if not hasattr(ctypes, "windll"):
-        return 1.0  # Assume 96 DPI (100% scaling) on non-Windows platforms
-
-    from ctypes import WINFUNCTYPE, byref, c_uint, wintypes, windll, c_int, POINTER  # type: ignore
-
-    windll.shcore.SetProcessDpiAwareness(2)
-
-    MONITORENUMPROC = WINFUNCTYPE(
-        c_int,
-        wintypes.HMONITOR,
-        wintypes.HDC,
-        POINTER(wintypes.RECT),
-        wintypes.LPARAM,
-    )
-
-    monitors = []
-
-    def callback(hMonitor, hdcMonitor, lprcMonitor, dwData):
-        dpi_x = c_uint()
-        dpi_y = c_uint()
-
-        windll.shcore.GetDpiForMonitor(
-            hMonitor,
-            0,
-            byref(dpi_x),
-            byref(dpi_y),
-        )
-
-        rect = lprcMonitor.contents
-
-        monitors.append(
-            {
-                "left": rect.left,
-                "top": rect.top,
-                "right": rect.right,
-                "bottom": rect.bottom,
-                "dpi": dpi_x.value,
-                "scale_percent": dpi_x.value / 96,
-            }
-        )
-
-        return 1
-
-    def point_in_rect(x, y, rect):
-        return rect["left"] <= x < rect["right"] and rect["top"] <= y < rect["bottom"]
-
-    windll.user32.EnumDisplayMonitors(0, 0, MONITORENUMPROC(callback), 0)
-
-    for m in monitors:
-        if point_in_rect(x, y, m):
-            return m["scale_percent"]
-
-    return 1.0
-
-
 class WindowHelper:
-    def __init__(self, title: str, dpi=0.0):
+    def __init__(self, title: str):
         self.sct = mss.MSS()
 
         self.bounds = None
@@ -131,23 +73,16 @@ class WindowHelper:
                 print(f"{title} window not found!")
                 raise Exception(f"{title} window not found!")
 
-            if dpi == 0.0:
-                dpi = get_dpi(self.window.center.x, self.window.center.y)
-
-            self.width = self.window.width * dpi
-            self.height = self.window.height * dpi
+            self.width = self.window.width
+            self.height = self.window.height
             self.top = self.window.top
             self.left = self.window.left
         else:
-            if dpi == 0.0:
-                dpi = 1.0
             left, top, width, height = gw.getWindowGeometry(title)  # type: ignore
-            self.width = width * dpi
-            self.height = height * dpi
+            self.width = width
+            self.height = height
             self.top = top
             self.left = left
-
-        self.dpi = dpi
 
         _ = self.screenshot()
         del _
@@ -269,14 +204,14 @@ class WindowHelper:
     def to_relative(self, x, y, relative=False):
         if self.bounds:
             if relative:
-                x = self.bounds[0] + x * (self.bounds[2] - self.bounds[0]) // self.dpi
-                y = self.bounds[1] + y * (self.bounds[3] - self.bounds[1]) // self.dpi
+                x = self.bounds[0] + x * (self.bounds[2] - self.bounds[0])
+                y = self.bounds[1] + y * (self.bounds[3] - self.bounds[1])
             else:
-                x = (self.bounds[0] // self.dpi) + x
-                y = (self.bounds[1] // self.dpi) + y
+                x = (self.bounds[0]) + x
+                y = (self.bounds[1]) + y
         elif relative:
-            x = int(x * self.width / self.dpi)
-            y = int(y * self.height / self.dpi)
+            x = int(x * self.width)
+            y = int(y * self.height)
         return x + self.left, y + self.top
 
     @clicks
@@ -339,7 +274,7 @@ class WindowHelper:
         results = self.ocr.readtext(image=img)
         results = [
             (
-                [[cast(int, x) // self.dpi, cast(int, y) // self.dpi] for x, y in box],
+                [[cast(int, x), cast(int, y)] for x, y in box],
                 detected_text,
                 confidence,
             )
@@ -433,7 +368,7 @@ class WindowHelper:
         if self.bounds:
             height = self.bounds[3] - self.bounds[1]
         else:
-            height = self.height // self.dpi
+            height = self.height
 
         text = loads(dumps(convert(text)))
         new_text = []

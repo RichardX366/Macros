@@ -2,11 +2,11 @@ from argparse import ArgumentParser
 from time import sleep
 from typing import cast
 
-from pyautogui import press
-
 from helpers import WindowHelper, bounding_box_center
 
 wh = WindowHelper("LimbusCompany")
+
+from pyautogui import press
 
 floor_complete = False
 

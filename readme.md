@@ -6,6 +6,7 @@ This is a collection of my macros.
 
 Run child programs with `python -m <filename>` to avoid issues with imports.
 The Python should work on Mac and Windows, but you can't focus/restore windows on Mac.
+When using WindowHelper, be sure to initialize it before importing pyautogui since the import messes up the DPI.
 
 ## Installation
 
