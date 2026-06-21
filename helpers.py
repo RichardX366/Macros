@@ -69,10 +69,42 @@ def find_monitor(left, top, monitors: list[dict]):
     return monitors[0]
 
 
+mac_clipboard = None
+
+
 def mac_screenshot():
+    get_mac_clipboard()
     subprocess.run(["screencapture", "-c"])
     img = ImageGrab.grabclipboard()
+    restore_mac_clipboard()
     return cast(Image.Image, img)
+
+
+def get_mac_clipboard():
+    from AppKit import NSPasteboard  # type: ignore
+
+    global mac_clipboard
+    pasteboard = NSPasteboard.generalPasteboard()
+    types = pasteboard.types()
+    data = {}
+
+    for t in types:
+        content = pasteboard.dataForType_(t)
+        if content:
+            data[str(t)] = content
+
+    mac_clipboard = data
+    return data
+
+
+def restore_mac_clipboard():
+    from AppKit import NSPasteboard  # type: ignore
+
+    global mac_clipboard
+    pasteboard = NSPasteboard.generalPasteboard()
+    pasteboard.clearContents()
+    for type_name, content in mac_clipboard.items():  # type: ignore
+        pasteboard.setData_forType_(content, type_name)
 
 
 def is_windows():
@@ -230,14 +262,25 @@ class WindowHelper:
         return True
 
     def focus_window(self):
-        self.current_window = gw.getActiveWindow()
         if is_windows():
+            self.current_window = gw.getActiveWindow()
             try:
                 _focus_window(self.window)
             except Exception as e:
                 print(f"Error focusing window: {e}")
                 raise
         else:
+            self.current_window = (
+                subprocess.check_output(
+                    [
+                        "osascript",
+                        "-e",
+                        'tell application "System Events" to get name of first application process whose frontmost is true',
+                    ]
+                )
+                .decode()
+                .strip()
+            )
             subprocess.run(
                 [
                     "osascript",
@@ -261,7 +304,7 @@ class WindowHelper:
                     [
                         "osascript",
                         "-e",
-                        f'tell application "{self.current_window.split(" - ")[0]}" to activate',
+                        f'tell application "{self.current_window}" to activate',
                     ]
                 )
 
