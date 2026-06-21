@@ -261,7 +261,7 @@ class WindowHelper:
                     [
                         "osascript",
                         "-e",
-                        f'tell application "{self.current_window.split(" ")[0]}" to activate',
+                        f'tell application "{self.current_window.split(" - ")[0]}" to activate',
                     ]
                 )
 
