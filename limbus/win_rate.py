@@ -3,29 +3,22 @@ from time import sleep
 from typing import Any
 
 from helpers import WindowHelper
-import keyboard
-from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
 
-wh = WindowHelper("LimbusCompany")
+try:
+    wh = WindowHelper("LimbusCompany")
+except:
+    wh = WindowHelper("iPhone Mirroring")
 
 from pyautogui import press
-
-sessions = AudioUtilities.GetAllSessions()
-volume: Any = None
-
-for session in sessions:
-    if session.Process:
-        if session.Process.name() == "LimbusCompany.exe":
-            volume = session._ctl.QueryInterface(ISimpleAudioVolume)
 
 
 def worker():
     while True:
         if wh.click_text(
             "Win",
-            top=0.7,
+            top=0.6,
             left=0.5,
-            height=0.2,
+            height=0.3,
             click=False,
             retry=False,
             includes=True,
@@ -41,16 +34,33 @@ def worker():
         sleep(1)
 
 
-def toggle_volume():
-    volume.SetMute(not volume.GetMute(), None)
-
-
 if __name__ == "__main__":
-    keyboard.add_hotkey("ctrl+\\", lambda: toggle_volume(), suppress=True)
+    print("Win rate ready.")
 
-    print(
-        "Win rate ready. Press Ctrl + \\ or press enter in the terminal to toggle volume."
-    )
+    def toggle_volume():
+        pass
+
+    try:
+        from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
+        import keyboard
+
+        sessions = AudioUtilities.GetAllSessions()
+        volume: Any = None
+
+        for session in sessions:
+            if session.Process:
+                if session.Process.name() == "LimbusCompany.exe":
+                    volume = session._ctl.QueryInterface(ISimpleAudioVolume)
+
+        def toggle_volume():
+            volume.SetMute(not volume.GetMute(), None)
+
+        keyboard.add_hotkey("ctrl+\\", lambda: toggle_volume(), suppress=True)
+
+        print("Press Ctrl + \\ or press enter in the terminal to toggle volume.")
+
+    except:
+        print("Audio control not available. Volume toggle will not work.")
 
     Thread(target=worker, daemon=True).start()
 

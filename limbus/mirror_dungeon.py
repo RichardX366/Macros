@@ -4,7 +4,10 @@ from typing import cast
 
 from helpers import WindowHelper, bounding_box_center
 
-wh = WindowHelper("LimbusCompany")
+try:
+    wh = WindowHelper("LimbusCompany")
+except:
+    wh = WindowHelper("iPhone Mirroring")
 
 from pyautogui import press
 
@@ -64,7 +67,7 @@ def advantage_check():
     for o in order:
         if o in advantages:
             x = left + step * advantages.index(o)
-            y = text[0][0][1][1] + 0.8 * wh.window.height + 20
+            y = text[0][0][1][1] + 0.8 * wh.height + 20
             wh.click(x, y)
             sleep(0.5)
             wh.click_text("Commence", top=0.8, left=0.8)
@@ -111,7 +114,7 @@ def handle_shop():
 
     replace = [t for t in text if "Replace" in t[1]][0]
     x, y = bounding_box_center(replace[0])
-    wh.click(x + 0.4 * wh.window.width, y + 0.3 * wh.window.height - 60)
+    wh.click(x + 0.4 * wh.width, y + 0.3 * wh.height - 60)
     sleep(0.5)
     wh.click_text("moderate", top=0.2, left=0.1, width=0.8, height=0.2, includes=True)
     sleep(0.1)
@@ -162,7 +165,7 @@ def handle_shop():
         next_item = get_next()
         box, cost, confidence = cast(tuple, next_item)
         x, y = bounding_box_center(box)
-        wh.click(x + 0.4 * wh.window.width, y + 0.3 * wh.window.height - 60)
+        wh.click(x + 0.4 * wh.width, y + 0.3 * wh.height - 60)
         sleep(1)
         wh.click_text("Purchase", top=0.6, left=0.5, width=0.2, height=0.3, retry=False)
         sleep(1)
@@ -238,13 +241,13 @@ def question():
             without_cursed = [t for t in text if not "Cursed" in t[1]]
             if not without_cursed:
                 x, y = bounding_box_center(text[0][0])
-                wh.click(x + 0.5 * wh.window.width, y)
+                wh.click(x + 0.5 * wh.width, y)
                 continue
 
             without_battle = [t for t in without_cursed if not "Battle" in t[1]]
             if not without_battle:
                 x, y = bounding_box_center(without_cursed[0][0])
-                wh.click(x + 0.5 * wh.window.width, y)
+                wh.click(x + 0.5 * wh.width, y)
                 battle_flag = True
                 continue
 
@@ -267,7 +270,7 @@ def question():
                     retry=False,
                 ):
                     x, y = bounding_box_center(without_battle[0][0])
-                    wh.click(x + 0.5 * wh.window.width, y)
+                    wh.click(x + 0.5 * wh.width, y)
 
             sleep(0.5)
 
@@ -298,7 +301,7 @@ def question():
 def fight():
     wh.click_text("To Battle!", top=0.7, left=0.8, height=0.2, retry=False)
     while True:
-        if wh.click_text("Win", top=0.7, left=0.7, height=0.2, retry=False):
+        if wh.click_text("Win", top=0.6, left=0.7, height=0.3, retry=False):
             sleep(0.1)
             press("enter")
             sleep(5)

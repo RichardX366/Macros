@@ -1,6 +1,7 @@
 from json import dumps, loads
 
 from math import exp
+import subprocess
 from time import sleep
 from typing import cast
 from functools import wraps
@@ -10,7 +11,7 @@ import easyocr
 import numpy as np
 import pygetwindow as gw
 import mss
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageGrab
 import io
 from rapidfuzz import process, fuzz
 
@@ -58,6 +59,26 @@ def clicks(func):
     return wrapper
 
 
+def find_monitor(left, top, monitors: list[dict]):
+    for monitor in monitors:
+        if (
+            monitor["top"] < top < monitor["top"] + monitor["height"]
+            and monitor["left"] < left < monitor["left"] + monitor["width"]
+        ):
+            return monitor
+    return monitors[0]
+
+
+def mac_screenshot():
+    subprocess.run(["screencapture", "-c"])
+    img = ImageGrab.grabclipboard()
+    return cast(Image.Image, img)
+
+
+def is_windows():
+    return "getWindowsWithTitle" in dir(gw)
+
+
 class WindowHelper:
     def __init__(self, title: str):
         self.sct = mss.MSS()
@@ -66,7 +87,7 @@ class WindowHelper:
         self.ocr_cache = None
         self.old_pointer_pos = None
 
-        if "getWindowsWithTitle" in dir(gw):
+        if is_windows():
             self.window = gw.getWindowsWithTitle(title)[0]  # type: ignore
 
             if self.window is None:
@@ -77,12 +98,20 @@ class WindowHelper:
             self.height = self.window.height
             self.top = self.window.top
             self.left = self.window.left
+            self.dpi = 1.0
         else:
+            self.window = title
             left, top, width, height = gw.getWindowGeometry(title)  # type: ignore
             self.width = width
             self.height = height
             self.top = top
             self.left = left
+
+            monitor = find_monitor(
+                left + width // 2, top + height // 2, self.sct.monitors
+            )
+            screenshot = mac_screenshot()
+            self.dpi = screenshot.width / monitor["width"]
 
         _ = self.screenshot()
         del _
@@ -101,29 +130,46 @@ class WindowHelper:
             PIL.Image: The screenshot as a PIL Image object in memory
         """
         try:
-            # Get window coordinates and account for DPI scaling
-            left = int(self.left)
-            top = int(self.top)
-            width = int(self.width)
-            height = int(self.height)
+            if is_windows():
+                # Get window coordinates and account for DPI scaling
+                left = int(self.left)
+                top = int(self.top)
+                width = int(self.width)
+                height = int(self.height)
 
-            # Capture screenshot using mss (efficient method)
-            with mss.MSS() as sct:
+                # Capture screenshot using mss (efficient method)
                 monitor = {"top": top, "left": left, "width": width, "height": height}
-                sc = sct.grab(monitor)
+                sc = self.sct.grab(monitor)
 
                 # Convert to PIL Image and keep in memory
                 image = Image.frombytes("RGB", sc.size, sc.rgb)
-
                 if self.bounds:
                     image = image.crop(self.bounds)
+            else:
+                image = mac_screenshot().crop(
+                    (
+                        self.left * self.dpi,
+                        self.top * self.dpi,
+                        (self.left + self.width) * self.dpi,
+                        (self.top + self.height) * self.dpi,
+                    )
+                )
+                if self.bounds:
+                    image = image.crop(
+                        (
+                            self.bounds[0] * self.dpi,
+                            self.bounds[1] * self.dpi,
+                            self.bounds[2] * self.dpi,
+                            self.bounds[3] * self.dpi,
+                        )
+                    )
 
-                # download_screenshot(image)
+            # download_screenshot(image)
 
-                return image
+            return image
 
         except IndexError:
-            raise Exception("LimbusCompany window not found!")
+            raise Exception("Window not found!")
         except Exception as e:
             raise Exception(f"Error capturing screenshot: {e}")
 
@@ -185,21 +231,39 @@ class WindowHelper:
 
     def focus_window(self):
         self.current_window = gw.getActiveWindow()
-        try:
-            _focus_window(self.window)
-        except Exception as e:
-            print(f"Error focusing window: {e}")
-            raise
+        if is_windows():
+            try:
+                _focus_window(self.window)
+            except Exception as e:
+                print(f"Error focusing window: {e}")
+                raise
+        else:
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    f'tell application "{self.window}" to activate',
+                ]
+            )
 
     def restore_previous_window(self):
         if self.current_window is not None:
-            try:
-                if self.current_window.isMinimized:  # type: ignore
-                    self.current_window.restore()  # type: ignore
-                self.current_window.activate()  # type: ignore
-            except Exception as e:
-                print(f"Error restoring previous window: {e}")
-                raise
+            if is_windows():
+                try:
+                    if self.current_window.isMinimized:  # type: ignore
+                        self.current_window.restore()  # type: ignore
+                    self.current_window.activate()  # type: ignore
+                except Exception as e:
+                    print(f"Error restoring previous window: {e}")
+                    raise
+            else:
+                subprocess.run(
+                    [
+                        "osascript",
+                        "-e",
+                        f'tell application "{self.current_window.split(" ")[0]}" to activate',
+                    ]
+                )
 
     def to_relative(self, x, y, relative=False):
         if self.bounds:
@@ -274,7 +338,13 @@ class WindowHelper:
         results = self.ocr.readtext(image=img)
         results = [
             (
-                [[cast(int, x), cast(int, y)] for x, y in box],
+                [
+                    [
+                        cast(int, x) / self.dpi,
+                        cast(int, y) / self.dpi,
+                    ]
+                    for x, y in box
+                ],
                 detected_text,
                 confidence,
             )

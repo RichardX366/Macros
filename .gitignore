@@ -5,3 +5,4 @@ data.json
 *.lnk
 venv/
 .venv/
+.DS_Store
