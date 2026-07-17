@@ -10,13 +10,15 @@ import cv2
 import easyocr
 import numpy as np
 import pygetwindow as gw
-import mss
 from PIL import Image, ImageChops, ImageGrab
 import io
 from rapidfuzz import process, fuzz
 
 pre_click_delay_global = 0.0
 post_click_delay_global = 0.2
+
+
+# Decorators
 
 
 def crops(func):
@@ -59,6 +61,9 @@ def clicks(func):
     return wrapper
 
 
+# Helpers
+
+
 def find_monitor(left, top, monitors: list[dict]):
     for monitor in monitors:
         if (
@@ -72,11 +77,16 @@ def find_monitor(left, top, monitors: list[dict]):
 mac_clipboard = None
 
 
-def mac_screenshot():
+def mac_screenshot(window: int = 0):
     get_mac_clipboard()
-    subprocess.run(["screencapture", "-c"])
+    if window:
+        subprocess.run(["screencapture", "-c", "-l", str(window)])
+    else:
+        subprocess.run(["screencapture", "-c"])
     img = ImageGrab.grabclipboard()
     restore_mac_clipboard()
+    if not isinstance(img, Image.Image):
+        return mac_screenshot(window)
     return cast(Image.Image, img)
 
 
@@ -111,20 +121,79 @@ def is_windows():
     return "getWindowsWithTitle" in dir(gw)
 
 
+def to_json(obj):
+    """
+    Convert numpy types to native Python types for JSON serialization.
+    """
+
+    return loads(dumps(_to_json(obj)))
+
+
+def _to_json(obj):
+    if (
+        isinstance(obj, np.ndarray)
+        or isinstance(obj, np.integer)
+        or isinstance(obj, np.floating)
+    ):
+        return obj.tolist()
+    elif isinstance(obj, list):
+        return [_to_json(x) for x in obj]
+    elif isinstance(obj, tuple):
+        return tuple(_to_json(x) for x in obj)
+    elif isinstance(obj, dict):
+        return {k: _to_json(v) for k, v in obj.items()}
+    else:
+        return obj
+
+
+def bounding_box_center(box):
+    pts = [(int(x), int(y)) for x, y in box]
+    x1 = min(p[0] for p in pts)
+    y1 = min(p[1] for p in pts)
+    x2 = max(p[0] for p in pts)
+    y2 = max(p[1] for p in pts)
+    return (x1 + x2) // 2, (y1 + y2) // 2
+
+
+def download_screenshot(image, filename="screenshot.png"):
+    """
+    Save the in-memory screenshot to a file.
+
+    Args:
+        image: PIL.Image object
+        filename: Output filename (default: screenshot.png)
+    """
+    if image:
+        image.save(filename)
+    else:
+        print("No image to save")
+
+
+def get_screenshot_bytes(image):
+    """
+    Get the screenshot as bytes for further processing.
+
+    Args:
+        image: PIL.Image object
+
+    Returns:
+        bytes: Image data in PNG format
+    """
+    if image:
+        bytes_buffer = io.BytesIO()
+        image.save(bytes_buffer, format="PNG")
+        return bytes_buffer.getvalue()
+    return None
+
+
 class WindowHelper:
-    def __init__(self, title: str):
-        self.sct = mss.MSS()
-
-        self.bounds = None
-        self.ocr_cache = None
-        self.old_pointer_pos = None
-
+    def set_window_box(self):
         if is_windows():
-            self.window = gw.getWindowsWithTitle(title)[0]  # type: ignore
+            self.window = gw.getWindowsWithTitle(self.title)[0]  # type: ignore
 
             if self.window is None:
-                print(f"{title} window not found!")
-                raise Exception(f"{title} window not found!")
+                print(f"{self.title} window not found!")
+                raise Exception(f"{self.title} window not found!")
 
             self.width = self.window.width
             self.height = self.window.height
@@ -132,21 +201,27 @@ class WindowHelper:
             self.left = self.window.left
             self.dpi = 1.0
         else:
-            self.window = title
-            left, top, width, height = gw.getWindowGeometry(title)  # type: ignore
-            self.width = width
-            self.height = height
-            self.top = top
-            self.left = left
+            from pygb import getOpenedWindows
 
-            monitor = find_monitor(
-                left + width // 2, top + height // 2, self.sct.monitors
-            )
-            screenshot = mac_screenshot()
-            self.dpi = screenshot.width / monitor["width"]
+            self.window = self.title
+            windows = [w for w in getOpenedWindows() if w["title"] == self.title]
+            if not windows:
+                raise Exception(f"{self.title} window not found!")
+            window = windows[0]
+            self.top = window["y"]
+            self.left = window["x"]
+            self.width = window["width"]
+            self.height = window["height"]
+            self.pid = window["pid"]
+            self.windowNumber = window["windowNumber"]
 
-        _ = self.screenshot()
-        del _
+    def __init__(self, title: str):
+        self.title = title
+        self.bounds = None
+        self.ocr_cache = None
+        self.old_pointer_pos = None
+
+        self.set_window_box()
 
         try:
             self.ocr = easyocr.Reader(["en"], gpu=True)
@@ -163,38 +238,22 @@ class WindowHelper:
         """
         try:
             if is_windows():
-                # Get window coordinates and account for DPI scaling
-                left = int(self.left)
-                top = int(self.top)
-                width = int(self.width)
-                height = int(self.height)
+                from fast_ctypes_screenshots import ScreenshotOfWindow
 
-                # Capture screenshot using mss (efficient method)
-                monitor = {"top": top, "left": left, "width": width, "height": height}
-                sc = self.sct.grab(monitor)
-
-                # Convert to PIL Image and keep in memory
-                image = Image.frombytes("RGB", sc.size, sc.rgb)
-                if self.bounds:
-                    image = image.crop(self.bounds)
+                with ScreenshotOfWindow(hwnd=self.window._hWnd) as screenshots_window:  # type: ignore
+                    image = Image.fromarray(screenshots_window.screenshot_window())
             else:
-                image = mac_screenshot().crop(
+                image = mac_screenshot(self.windowNumber)
+
+            if self.bounds:
+                image = image.crop(
                     (
-                        self.left * self.dpi,
-                        self.top * self.dpi,
-                        (self.left + self.width) * self.dpi,
-                        (self.top + self.height) * self.dpi,
+                        self.bounds[0] * self.dpi,
+                        self.bounds[1] * self.dpi,
+                        self.bounds[2] * self.dpi,
+                        self.bounds[3] * self.dpi,
                     )
                 )
-                if self.bounds:
-                    image = image.crop(
-                        (
-                            self.bounds[0] * self.dpi,
-                            self.bounds[1] * self.dpi,
-                            self.bounds[2] * self.dpi,
-                            self.bounds[3] * self.dpi,
-                        )
-                    )
 
             # download_screenshot(image)
 
@@ -204,6 +263,16 @@ class WindowHelper:
             raise Exception("Window not found!")
         except Exception as e:
             raise Exception(f"Error capturing screenshot: {e}")
+
+    def press(self, key):
+        if is_windows():
+            from windows_key_press import press
+
+            press(key, window=self.window._hWnd)  # type: ignore
+        else:
+            from pygb import press
+
+            press(key, window=self.pid)
 
     def set_bounds(self, top=0.0, left=0.0, width=0.0, height=0.0):
         if not width:
@@ -265,7 +334,9 @@ class WindowHelper:
         if is_windows():
             self.current_window = gw.getActiveWindow()
             try:
-                _focus_window(self.window)
+                if self.window.isMinimized:  # type: ignore
+                    self.window.restore()  # type: ignore
+                self.window.activate()  # type: ignore
             except Exception as e:
                 print(f"Error focusing window: {e}")
                 raise
@@ -345,20 +416,22 @@ class WindowHelper:
             self.old_pointer_pos = None
 
     def drag(self, x1, y1, x2, y2, duration=0.5, relative=False):
-        from pyautogui import moveTo, position
+        from pyautogui import moveTo, position, mouseDown, mouseUp
 
         x1, y1 = self.to_relative(x1, y1, relative)
         x2, y2 = self.to_relative(x2, y2, relative)
 
         self.old_pointer_pos = position()
 
-        drag(
-            x1,
-            y1,
-            x2,
-            y2,
-            duration,
-        )
+        # Use pyautogui to perform a smooth drag
+        moveTo(int(x1), int(y1))
+        sleep(0.5)
+        mouseDown()
+
+        # dragTo will move the cursor to the target over duration
+        moveTo(int(x2), int(y2), duration=duration)
+        mouseUp()
+        sleep(0.1)
 
         if self.old_pointer_pos:
             moveTo(int(self.old_pointer_pos[0]), int(self.old_pointer_pos[1]))
@@ -483,7 +556,7 @@ class WindowHelper:
         else:
             height = self.height
 
-        text = loads(dumps(convert(text)))
+        text = to_json(text)
         new_text = []
         current_top_left = text[0][0][0]
         current_text = text[0][1]
@@ -526,85 +599,3 @@ class WindowHelper:
         )
 
         return new_text
-
-
-def convert(obj):
-    if (
-        isinstance(obj, np.ndarray)
-        or isinstance(obj, np.integer)
-        or isinstance(obj, np.floating)
-    ):
-        return obj.tolist()
-    elif isinstance(obj, list):
-        return [convert(x) for x in obj]
-    elif isinstance(obj, tuple):
-        return tuple(convert(x) for x in obj)
-    elif isinstance(obj, dict):
-        return {k: convert(v) for k, v in obj.items()}
-    else:
-        return obj
-
-
-def bounding_box_center(box):
-    pts = [(int(x), int(y)) for x, y in box]
-    x1 = min(p[0] for p in pts)
-    y1 = min(p[1] for p in pts)
-    x2 = max(p[0] for p in pts)
-    y2 = max(p[1] for p in pts)
-    return (x1 + x2) // 2, (y1 + y2) // 2
-
-
-def download_screenshot(image, filename="screenshot.png"):
-    """
-    Save the in-memory screenshot to a file.
-
-    Args:
-        image: PIL.Image object
-        filename: Output filename (default: screenshot.png)
-    """
-    if image:
-        image.save(filename)
-    else:
-        print("No image to save")
-
-
-def get_screenshot_bytes(image):
-    """
-    Get the screenshot as bytes for further processing.
-
-    Args:
-        image: PIL.Image object
-
-    Returns:
-        bytes: Image data in PNG format
-    """
-    if image:
-        bytes_buffer = io.BytesIO()
-        image.save(bytes_buffer, format="PNG")
-        return bytes_buffer.getvalue()
-    return None
-
-
-def _focus_window(window):
-    # Attempt to bring the window to front using pygetwindow APIs.
-    try:
-        if window.isMinimized:
-            window.restore()
-        # activate should bring to foreground on most systems
-        window.activate()
-    except Exception:
-        # best-effort; ignore failures
-        pass
-
-
-def drag(x1, y1, x2, y2, duration=0.5):
-    from pyautogui import moveTo, mouseDown, mouseUp
-
-    # Use pyautogui to perform a smooth drag
-    moveTo(int(x1), int(y1))
-    sleep(0.5)
-    mouseDown()
-    # dragTo will move the cursor to the target over duration
-    moveTo(int(x2), int(y2), duration=duration)
-    mouseUp()
-    sleep(0.1)

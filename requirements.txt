@@ -8,3 +8,5 @@ PyAutoGUI
 PyGetWindow
 rapidfuzz
 keyboard
+pygb
+fast_ctypes_screenshots

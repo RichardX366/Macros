@@ -9,8 +9,6 @@ try:
 except:
     wh = WindowHelper("iPhone Mirroring")
 
-from pyautogui import press
-
 
 def worker():
     while True:
@@ -21,15 +19,19 @@ def worker():
             height=0.3,
             click=False,
             retry=False,
-            includes=True,
         ):
-            wh.focus_window()
-            sleep(0.2)
-            press("p")
+            wh.press("p")
             sleep(0.1)
-            press("enter")
-            sleep(0.2)
-            wh.restore_previous_window()
+            wh.press("enter")
+            sleep(5)
+        if wh.click_text(
+            "Confirm",
+            top=0.7,
+            left=0.7,
+            click=False,
+            retry=False,
+        ):
+            wh.press("enter")
             sleep(5)
         sleep(1)
 
