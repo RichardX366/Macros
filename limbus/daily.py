@@ -1,6 +1,6 @@
 from time import sleep
 
-from helpers import WindowHelper, bounding_box_center, is_windows
+from helpers import WindowHelper, bounding_box_center
 from limbus.open_limbus import launch_limbus
 
 wh: WindowHelper = None  # type: ignore
@@ -34,7 +34,8 @@ def battle():
 
 def main():
     wh.mute(True)
-    # Load game
+
+    print("Loading game...")
     wh.click_text(
         "FACE THE SIN, SAVE THE E.G.O",
         top=0.6,
@@ -46,12 +47,12 @@ def main():
     sleep(1)
     wh.click(0.5, 0.5, relative=True)
 
-    # Wait for load and then open Enkephalin screen
+    print("Waiting for game to load and opening Enkephalin screen...")
     wh.click_text("LUNACY", top=0.8, left=0.35, width=0.2, click=False)
     wh.click(0.3, 0.9, relative=True)
     sleep(0.5)
 
-    # Click >>
+    print("Clicking >> button...")
     text = wh.read_screen(top=0.3, left=0.3, height=0.5, width=0.4)
     confirm_box = [t for t in text if "Confirm" in t[1]][0][0]
     owned_box = [t for t in text if "Owned" in t[1]][0][0]
@@ -60,7 +61,7 @@ def main():
     y = (owned_box[2][1] + recovered_box[0][1]) / 2
     wh.click(x, y, pre_click_delay=0.2)
 
-    # Confirm
+    print("Confirming...")
     confirm_center = bounding_box_center(confirm_box)
     wh.click(
         confirm_center[0],
@@ -69,13 +70,13 @@ def main():
     sleep(5)
     wh.click(0.1, 0.1, relative=True)  # Click outside to close the Enkephalin screen
 
-    # Open Luxcavation
+    print("Opening Luxcavation screen...")
     wh.click_text("Drive", top=0.8, left=0.7, width=0.2)
     sleep(0.5)
     wh.click_text("Luxcavation", top=0.2, left=0.25, width=0.2, height=0.15)
     sleep(0.5)
 
-    # EXP
+    print("Handling XP Luxcavation...")
     wh.click_text("Enter", top=0.6, left=0.75, width=0.2, height=0.15)
     sleep(0.5)
     wh.click_text("To Battle", top=0.75, left=0.8, height=0.2, includes=True)
@@ -83,7 +84,7 @@ def main():
     battle()
     sleep(0.5)
 
-    # Thread
+    print("Handling Thread Luxcavation...")
     wh.click_text("Thread", top=0.4, width=0.2, height=0.2)
     sleep(0.5)
     wh.click_text("Skip Battle", top=0.65, left=0.2, width=0.2, height=0.2)
@@ -99,13 +100,13 @@ def main():
     wh.restore_previous_window()
     sleep(0.5)
 
-    # Limbus Pass
+    print("Opening Limbus Pass...")
     wh.click_text("Window", top=0.5, left=0.6, width=0.2)
     sleep(0.5)
     wh.click_text("UNTIL SEASON 8 UPDATE", top=0.3, left=0.7, width=0.2, height=0.2)
     sleep(0.5)
 
-    # Claim Missions
+    print("Claiming Limbus Pass missions...")
     wh.click_text("Pass Missions", left=0.2, width=0.2, height=0.2)
     sleep(0.5)
     text = wh.read_screen(top=0.2, left=0.3, height=0.7, width=0.2)
@@ -113,7 +114,7 @@ def main():
         wh.click(*bounding_box_center(t[0]), post_click_delay=0.0)
     sleep(0.5)
 
-    # Claim Rewards
+    print("Claiming Limbus Pass Rewards...")
     wh.click_text("Battle Pass", left=0.1, width=0.2, height=0.2)
     sleep(0.5)
     wh.click_text("Claim", top=0.75, left=0.55, width=0.2, height=0.2, includes=True)

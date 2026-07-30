@@ -1,6 +1,9 @@
+print("Loading modules...")
+
 from json import dumps, loads
 
 from math import exp
+from os import popen
 import subprocess
 from time import sleep
 from typing import Any, cast
@@ -186,6 +189,12 @@ def get_screenshot_bytes(image):
     return None
 
 
+def sleep_windows():
+    popen(
+        """powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)" """
+    )
+
+
 class WindowHelper:
     def set_window_box(self):
         if is_windows():
@@ -227,6 +236,8 @@ class WindowHelper:
             self.ocr = easyocr.Reader(["en"], gpu=True)
         except Exception:
             self.ocr = easyocr.Reader(["en"], gpu=False)
+
+        print("Window Helper initialized for:", self.title)
 
     def screenshot(self) -> Image.Image:
         """
