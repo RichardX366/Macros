@@ -2,7 +2,9 @@ from threading import Thread
 from time import sleep
 from typing import Any
 
-from helpers import WindowHelper
+import keyboard
+
+from helpers import WindowHelper, is_windows
 
 try:
     wh = WindowHelper("LimbusCompany")
@@ -20,9 +22,13 @@ def worker():
             click=False,
             retry=False,
         ):
+            if is_windows():
+                wh.focus_window()
             wh.press("p")
             sleep(0.1)
             wh.press("enter")
+            if is_windows():
+                wh.restore_previous_window()
             sleep(5)
         if wh.click_text(
             "Confirm",
@@ -31,7 +37,11 @@ def worker():
             click=False,
             retry=False,
         ):
+            if is_windows():
+                wh.focus_window()
             wh.press("enter")
+            if is_windows():
+                wh.restore_previous_window()
             sleep(5)
         sleep(1)
 
@@ -39,33 +49,12 @@ def worker():
 if __name__ == "__main__":
     print("Win rate ready.")
 
-    def toggle_volume():
-        pass
+    keyboard.add_hotkey("ctrl+\\", lambda: wh.mute(), suppress=True)
 
-    try:
-        from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
-        import keyboard
-
-        sessions = AudioUtilities.GetAllSessions()
-        volume: Any = None
-
-        for session in sessions:
-            if session.Process:
-                if session.Process.name() == "LimbusCompany.exe":
-                    volume = session._ctl.QueryInterface(ISimpleAudioVolume)
-
-        def toggle_volume():
-            volume.SetMute(not volume.GetMute(), None)
-
-        keyboard.add_hotkey("ctrl+\\", lambda: toggle_volume(), suppress=True)
-
-        print("Press Ctrl + \\ or press enter in the terminal to toggle volume.")
-
-    except:
-        print("Audio control not available. Volume toggle will not work.")
+    print("Press Ctrl + \\ or press enter in the terminal to toggle volume.")
 
     Thread(target=worker, daemon=True).start()
 
     while True:
         input()
-        toggle_volume()
+        wh.mute()

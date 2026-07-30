@@ -3,7 +3,7 @@ from json import dumps, loads
 from math import exp
 import subprocess
 from time import sleep
-from typing import cast
+from typing import Any, cast
 from functools import wraps
 
 import cv2
@@ -238,10 +238,9 @@ class WindowHelper:
         """
         try:
             if is_windows():
-                from fast_ctypes_screenshots import ScreenshotOfWindow
+                from windows_screenshot import windows_screenshot
 
-                with ScreenshotOfWindow(hwnd=self.window._hWnd) as screenshots_window:  # type: ignore
-                    image = Image.fromarray(screenshots_window.screenshot_window())
+                image = windows_screenshot(self.window._hWnd)  # type: ignore
             else:
                 image = mac_screenshot(self.windowNumber)
 
@@ -266,9 +265,9 @@ class WindowHelper:
 
     def press(self, key):
         if is_windows():
-            from windows_key_press import press
+            from pyautogui import press
 
-            press(key, window=self.window._hWnd)  # type: ignore
+            press(key)
         else:
             from pygb import press
 
@@ -338,8 +337,7 @@ class WindowHelper:
                     self.window.restore()  # type: ignore
                 self.window.activate()  # type: ignore
             except Exception as e:
-                print(f"Error focusing window: {e}")
-                raise
+                pass
         else:
             self.current_window = (
                 subprocess.check_output(
@@ -368,8 +366,7 @@ class WindowHelper:
                         self.current_window.restore()  # type: ignore
                     self.current_window.activate()  # type: ignore
                 except Exception as e:
-                    print(f"Error restoring previous window: {e}")
-                    raise
+                    pass
             else:
                 subprocess.run(
                     [
@@ -441,16 +438,21 @@ class WindowHelper:
     def read_screen(
         self,
         confidence_threshold=0.2,
+        normalize_coordinates=True,
         use_cache=False,
         top=0.0,
         left=0.0,
         width=0.0,
         height=0.0,
     ):
+        """
+        Perform OCR on the current window's screenshot and return detected text with bounding boxes. Returns a list of tuples containing bounding box coordinates, detected text, and confidence score.
+        """
+
         if use_cache and self.ocr_cache is not None:
             return self.ocr_cache
 
-        img = cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR)
+        img = np.array(self.screenshot())
         results = self.ocr.readtext(image=img)
         results = [
             (
@@ -469,6 +471,13 @@ class WindowHelper:
         ]
         results.sort(key=lambda x: x[0][0][1])  # Sort by y-coordinate (top to bottom)
 
+        if normalize_coordinates and self.bounds:
+            for result in results:
+                box = result[0]
+                for point in box:
+                    point[0] += self.bounds[0]
+                    point[1] += self.bounds[1]
+
         self.ocr_cache = results
 
         return results
@@ -479,7 +488,7 @@ class WindowHelper:
         self,
         text,
         confidence_threshold=0.2,
-        fuzz_threshold=80,
+        fuzz_threshold=90,
         use_cache=False,
         includes=False,
         click=True,
@@ -507,7 +516,7 @@ class WindowHelper:
             height,
         )
 
-        results = self.read_screen(confidence_threshold, use_cache)
+        results = self.read_screen(confidence_threshold, False, use_cache)
 
         if not results:
             if retry and not use_cache:
@@ -538,6 +547,7 @@ class WindowHelper:
 
         if score > fuzz_threshold:
             box, detected_text, confidence = results[index]
+            # print(detected_text, confidence, score)
             click_x, click_y = bounding_box_center(box)
 
             if click:
@@ -599,3 +609,38 @@ class WindowHelper:
         )
 
         return new_text
+
+    def mute(self, set_mute=None):
+        try:
+            if "volume" not in dir(self):
+                from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
+
+                self.volume: Any = None
+
+                sessions = AudioUtilities.GetAllSessions()
+                for session in sessions:
+                    if session.Process:
+                        if self.title in session.Process.name():
+                            self.volume = session._ctl.QueryInterface(
+                                ISimpleAudioVolume
+                            )
+
+            if self.volume:
+                if set_mute is not None:
+                    self.volume.SetMute(set_mute, None)
+                else:
+                    self.volume.SetMute(not self.volume.GetMute(), None)
+        except Exception as e:
+            print(f"Error toggling mute: {e}")
+
+    def close(self):
+        if is_windows():
+            self.window.close()  # type: ignore
+        else:
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    f'tell application "{self.window}" to quit',
+                ]
+            )
