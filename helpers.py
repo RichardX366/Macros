@@ -278,7 +278,9 @@ class WindowHelper:
         if is_windows():
             from pyautogui import press
 
+            self.focus_window()
             press(key)
+            self.restore_previous_window()
         else:
             from pygb import press
 

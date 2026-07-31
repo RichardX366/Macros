@@ -22,13 +22,9 @@ def worker():
             click=False,
             retry=False,
         ):
-            if is_windows():
-                wh.focus_window()
             wh.press("p")
             sleep(0.1)
             wh.press("enter")
-            if is_windows():
-                wh.restore_previous_window()
             sleep(5)
         if wh.click_text(
             "Confirm",
@@ -37,11 +33,7 @@ def worker():
             click=False,
             retry=False,
         ):
-            if is_windows():
-                wh.focus_window()
             wh.press("enter")
-            if is_windows():
-                wh.restore_previous_window()
             sleep(5)
         sleep(1)
 
