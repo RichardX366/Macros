@@ -8,19 +8,15 @@ def main(wh: WindowHelper):
     wh.mute(True)
 
     print("Loading game...")
-    wh.click_text(
-        "FACE THE SIN, SAVE THE E.G.O",
-        top=0.6,
-        left=0.3,
-        height=0.2,
-        width=0.4,
-        click=False,
-    )
-    sleep(1)
-    wh.click(0.5, 0.5, relative=True)
+    while not wh.click_text(
+        "LUNACY", top=0.8, left=0.35, width=0.2, click=False, retry=False
+    ):
+        wh.click_text(
+            "FACE", top=0.6, left=0.3, height=0.2, width=0.4, includes=True, retry=False
+        )
+        sleep(5)
 
-    print("Waiting for game to load and opening Enkephalin screen...")
-    wh.click_text("LUNACY", top=0.8, left=0.35, width=0.2, click=False)
+    print("Opening Enkephalin screen...")
     wh.click(0.3, 0.9, relative=True)
     sleep(0.5)
 
