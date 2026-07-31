@@ -3,6 +3,12 @@ import win32gui
 import win32ui
 from PIL import Image
 
+try:
+    # Per-Monitor DPI Awareness V2 (best)
+    ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+except Exception:
+    pass
+
 PW_RENDERFULLCONTENT = 0x00000002
 
 user32 = ctypes.windll.user32

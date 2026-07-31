@@ -198,6 +198,8 @@ def sleep_windows():
 class WindowHelper:
     def set_window_box(self):
         if is_windows():
+            from windows_screenshot import windows_screenshot
+
             self.window = gw.getWindowsWithTitle(self.title)[0]  # type: ignore
 
             if self.window is None:
