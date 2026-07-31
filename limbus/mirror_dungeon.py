@@ -9,9 +9,95 @@ try:
 except:
     wh = WindowHelper("iPhone Mirroring")
 
-from pyautogui import press
 
 floor_complete = False
+
+# Helpers
+
+
+def in_room_selection():
+    text = wh.read_screen(left=0.7, height=0.2, width=0.2)
+    if len([t[1] for t in text if t[1].strip().isnumeric()]) >= 2:
+        text = wh.read_screen(
+            left=0.3, height=0.2, width=0.4, confidence_threshold=0.05
+        )
+        flat = []
+        for t in text:
+            flat += t[1].split(" ")
+        if len([t for t in flat if t.strip().isnumeric()]) >= 4:
+            return True
+    return False
+
+
+def handle_gift():
+    if wh.click_text(
+        "Select Encounter Reward Card",
+        top=0.1,
+        left=0.1,
+        width=0.6,
+        height=0.2,
+        click=False,
+        retry=False,
+    ):
+        print("Reward Card")
+        sleep(0.5)
+        if wh.click_text(
+            "Gain",
+            top=0.5,
+            left=0.1,
+            width=0.8,
+            height=0.3,
+            includes=True,
+            retry=False,
+        ) or wh.click_text(
+            "Resource",
+            top=0.5,
+            left=0.1,
+            width=0.8,
+            height=0.3,
+            includes=True,
+            use_cache=True,
+            retry=False,
+        ):
+            sleep(0.5)
+            wh.click_text(
+                "Confirm", top=0.5, left=0.1, width=0.8, height=0.3, use_cache=True
+            )
+            sleep(1)
+            wh.click_text(
+                "Confirm", top=0.6, left=0.4, width=0.2, height=0.2, retry=False
+            )
+            sleep(5)
+
+    text = wh.read_screen(top=0.2, left=0.1, width=0.8, height=0.1)
+    text = [t for t in text if "Acquire" in t[1] and "Gift" in t[1]]
+    if text:
+        sleep(0.5)
+        wh.click(*bounding_box_center(text[0][0]))
+        sleep(0.5)
+        if len(text) > 3:
+            wh.click(*bounding_box_center(text[1][0]))
+            sleep(0.5)
+        wh.click_text("Select", top=0.7, left=0.8, height=0.2, includes=True)
+        sleep(1)
+        wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2)
+        sleep(0.5)
+        wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2, retry=False)
+        sleep(3)
+
+    if wh.click_text(
+        "Victory",
+        top=0.1,
+        left=0.7,
+        height=0.2,
+        click=False,
+        retry=False,
+    ):
+        print("Dungeon Complete")
+        return "Dungeon Complete"
+
+
+# Overarching functions
 
 
 def enter():
@@ -25,7 +111,7 @@ def enter():
     sleep(0.5)
     wh.click_text("Confirm", top=0.6, left=0.7)
     sleep(0.5)
-    wh.click_text("Cumulating Starcloud", top=0.2, left=0.1)
+    wh.click_text("Favor of the Nebulae", top=0.2, left=0.1)
     sleep(0.5)
     wh.click_text("Starlight Guidance", top=0.2, left=0.1, use_cache=True)
     sleep(0.5)
@@ -40,14 +126,18 @@ def enter():
     sleep(0.5)
     wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.3)
     sleep(2)
-    wh.click_text("SELECT", top=0.1, left=0.3, width=0.4, height=0.2, click=False)
+    wh.click_text(
+        "SELECT", top=0.1, left=0.3, width=0.4, height=0.2, click=False, includes=True
+    )
+    wh.click_text("NORMAL", left=0.6, height=0.2, width=0.2, retry=False)
+    sleep(0.5)
     wh.drag(0.5, 0.4, 0.5, 0.8, relative=True)
     sleep(1)
 
 
 def advantage_check():
     order = ["Very High", "High", "Norma", "Low", "Very Low"]
-    text = wh.read_screen(top=0.8, confidence_threshold=0.1)
+    text = wh.read_screen(top=0.8, width=0.8, height=0.1)
     text.sort(key=lambda t: t[0][0][0])
     text = [t for t in text if any(o in t[1] for o in order)]
     left = text[0][0][0][0]
@@ -67,7 +157,7 @@ def advantage_check():
     for o in order:
         if o in advantages:
             x = left + step * advantages.index(o)
-            y = text[0][0][1][1] + 20
+            y = text[0][0][1][1] + 0.020 * wh.height
             wh.click(x, y)
             sleep(0.5)
             wh.click_text("Commence", top=0.8, left=0.8)
@@ -75,7 +165,6 @@ def advantage_check():
             while not wh.click_text(
                 "Check",
                 fuzz_threshold=40,
-                confidence_threshold=0.1,
                 top=0.6,
                 left=0.6,
                 width=0.3,
@@ -108,34 +197,50 @@ def handle_shop():
 
     def get_balance():
         balance_text = wh.read_screen(top=0.1, left=0.4, width=0.2, height=0.2)
-        return int(balance_text[0][1].replace(",", ""))
+        balance = [
+            t[1].replace(",", "")
+            for t in balance_text
+            if t[1].replace(",", "").isnumeric()
+        ]
+        return int(balance[0]) if balance else 0
 
     text = wh.read_screen(top=0.3, left=0.4, width=0.5, height=0.4)
 
-    replace = [t for t in text if "Replace" in t[1]][0]
-    x, y = bounding_box_center(replace[0])
-    wh.click(x, y - 60)
-    sleep(0.5)
-    wh.click_text("moderate", top=0.2, left=0.1, width=0.8, height=0.2, includes=True)
-    sleep(0.1)
-    wh.click_text(
-        "large", top=0.2, left=0.1, width=0.8, height=0.2, includes=True, use_cache=True
-    )
-    sleep(0.1)
-    wh.click_text(
-        "tremendous",
-        top=0.2,
-        left=0.1,
-        width=0.8,
-        height=0.2,
-        includes=True,
-        use_cache=True,
-    )
-    sleep(0.5)
-    wh.click_text("Confirm", top=0.65, left=0.5, width=0.2, height=0.2)
-    sleep(1)
-    wh.click_text("Confirm", top=0.65, left=0.5, width=0.2, height=0.2, use_cache=True)
-    sleep(1)
+    replace_skills = [t for t in text if "Replace" in t[1]]
+    for replace in replace_skills:
+        x, y = bounding_box_center(replace[0])
+        wh.click(x, y - 0.06 * wh.height)
+        sleep(0.5)
+        wh.click_text(
+            "moderate", top=0.2, left=0.1, width=0.8, height=0.2, includes=True
+        )
+        sleep(0.1)
+        wh.click_text(
+            "large",
+            top=0.2,
+            left=0.1,
+            width=0.8,
+            height=0.2,
+            includes=True,
+            use_cache=True,
+        )
+        sleep(0.1)
+        wh.click_text(
+            "tremendous",
+            top=0.2,
+            left=0.1,
+            width=0.8,
+            height=0.2,
+            includes=True,
+            use_cache=True,
+        )
+        sleep(0.5)
+        wh.click_text("Confirm", top=0.65, left=0.5, width=0.2, height=0.2)
+        sleep(1)
+        wh.click_text(
+            "Confirm", top=0.65, left=0.5, width=0.2, height=0.2, use_cache=True
+        )
+        sleep(1)
 
     balance = get_balance()
     rows = []
@@ -165,7 +270,7 @@ def handle_shop():
         next_item = get_next()
         box, cost, confidence = cast(tuple, next_item)
         x, y = bounding_box_center(box)
-        wh.click(x, y - 60)
+        wh.click(x, y - 0.06 * wh.height)
         sleep(1)
         wh.click_text("Purchase", top=0.6, left=0.5, width=0.2, height=0.3, retry=False)
         sleep(1)
@@ -181,36 +286,32 @@ def handle_shop():
     sleep(0.5)
     wh.click_text("Confirm", top=0.65, left=0.5, width=0.2, height=0.2)
     sleep(5)
-    press("d")
+    wh.press("d")
     sleep(1.0)
-    press("enter")
+    wh.press("enter")
     sleep(1.0)
     result = fight()
     if result == "Dungeon Complete":
         global floor_complete
         floor_complete = True
         return result
-    sleep(5)
-
-    if wh.click_text(
-        "Acquire E.G.O Gift", top=0.2, left=0.2, width=0.6, height=0.1, retry=False
-    ):
-        sleep(0.1)
-        wh.click_text("Select", top=0.7, left=0.8, height=0.2)
-        sleep(1)
-        wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2)
-        sleep(5)
 
     wh.drag(0.5, 0.4, 0.5, 0.8, relative=True)
-    sleep(5)
-    global floor_complete
+    sleep(3)
     floor_complete = True
 
 
 def question():
     sleep(1.5)
     if wh.click_text(
-        "Shop", top=0.1, left=0.1, width=0.2, height=0.2, click=False, retry=False
+        "Shop",
+        top=0.1,
+        left=0.1,
+        width=0.2,
+        height=0.2,
+        click=False,
+        retry=False,
+        includes=True,
     ):
         return handle_shop()
     if wh.click_text(
@@ -240,7 +341,7 @@ def question():
             return
 
         if wh.click_text("Choices", click=False, left=0.5, height=0.8, retry=False):
-            text = wh.read_screen(use_cache=True, left=0.5, height=0.8)
+            text = wh.read_screen(left=0.5, height=0.8, use_cache=True)
             text.pop(0)
             text = wh.clump_ocr(text)
 
@@ -278,30 +379,23 @@ def question():
                     x, y = bounding_box_center(without_battle[0][0])
                     wh.click(x, y)
 
-            sleep(0.5)
+            sleep(0.1)
 
         if wh.click_text(
             "Advantage",
             left=0.5,
             height=0.3,
-            includes=True,
             split_spaces=True,
             retry=False,
+            fuzz_threshold=80,
         ):
-            sleep(1)
-            wh.click_text(
-                "Advantage",
-                left=0.5,
-                height=0.3,
-                includes=True,
-                split_spaces=True,
-                use_cache=True,
-                retry=False,
-            )
             sleep(0.5)
+            while not wh.read_screen(top=0.8, width=0.8, height=0.1):
+                wh.click(0.5, 0.5, relative=True)
+                sleep(0.5)
             advantage_check()
 
-        sleep(0.5)
+        sleep(0.1)
 
 
 def fight():
@@ -311,102 +405,33 @@ def fight():
     while True:
         if wh.click_text("Win", top=0.6, left=0.7, height=0.3, retry=False):
             sleep(0.1)
-            press("enter")
+            wh.press("enter")
             sleep(5)
 
         if wh.click_text("SKIP", top=0.8, left=0.8, retry=False):
             question()
 
-        if wh.click_text(
-            "Select Encounter Reward Card",
-            top=0.2,
-            left=0.1,
-            width=0.6,
-            height=0.1,
-            click=False,
-            retry=False,
-        ):
-            print("Fight Ended Due to Reward Card")
-            if wh.click_text(
-                "Gain",
-                top=0.5,
-                left=0.1,
-                width=0.8,
-                height=0.3,
-                includes=True,
-                retry=False,
-            ) or wh.click_text(
-                "Resource",
-                top=0.5,
-                left=0.1,
-                width=0.8,
-                height=0.3,
-                includes=True,
-                use_cache=True,
-                retry=False,
-            ):
-                sleep(0.1)
-                wh.click_text(
-                    "Confirm", top=0.5, left=0.1, width=0.8, height=0.3, use_cache=True
-                )
-                sleep(5)
-                return
+        if handle_gift() == "Dungeon Complete":
+            return "Dungeon Complete"
 
-        if wh.click_text(
-            "Acquire E.G.O Gift", top=0.2, left=0.2, width=0.6, height=0.1, retry=False
-        ):
-            print("Fight Ended Due to EGO Gift")
-            sleep(0.1)
-            wh.click_text("Select", top=0.7, left=0.8, height=0.2)
-            sleep(1)
-            wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2)
-            sleep(5)
-
-            if wh.click_text(
-                "Gain",
-                top=0.5,
-                left=0.1,
-                width=0.8,
-                height=0.3,
-                includes=True,
-                retry=False,
-            ) or wh.click_text(
-                "Resource",
-                top=0.5,
-                left=0.1,
-                width=0.8,
-                height=0.3,
-                includes=True,
-                use_cache=True,
-                retry=False,
-            ):
-                sleep(0.1)
-                wh.click_text(
-                    "Confirm", top=0.5, left=0.1, width=0.8, height=0.3, use_cache=True
-                )
-                sleep(0.5)
-                wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2)
-                sleep(5)
-                return
-
-            return
-
-        text = wh.read_screen(left=0.7, height=0.2)
-        if len([t[1] for t in text if t[1].strip().isnumeric()]) >= 2:
-            print("Fight Ended Due to Seeing Numbers", [t[1] for t in text])
+        if in_room_selection():
+            print("Fight Ended Due to Seeing Numbers")
             sleep(0.5)
             return
 
         if wh.click_text(
-            "Victory",
+            "SELECT",
             top=0.1,
-            left=0.7,
+            left=0.3,
+            width=0.4,
             height=0.2,
             click=False,
+            includes=True,
             retry=False,
         ):
-            print("Dungeon Complete")
-            return "Dungeon Complete"
+            print("Fight Ended Due to Seeing Select")
+            sleep(0.5)
+            return
 
         sleep(1)
 
@@ -416,7 +441,10 @@ def handle_encounter():
         "Confirm", top=0.6, left=0.4, width=0.2, height=0.3, retry=False
     ):
         sleep(1)
-    press("d")
+    while not in_room_selection():
+        sleep(1)
+    sleep(1)
+    wh.press("d")
     sleep(1)
     if not wh.click_text(
         "Clear Rewards",
@@ -427,11 +455,11 @@ def handle_encounter():
         click=False,
         retry=False,
     ):
-        press("enter")
+        wh.press("enter")
         return question()
-    press("a")
+    wh.press("a")
     sleep(1)
-    press("w")
+    wh.press("w")
     sleep(1)
     if not wh.click_text(
         "Clear Rewards",
@@ -442,11 +470,11 @@ def handle_encounter():
         click=False,
         retry=False,
     ):
-        press("enter")
+        wh.press("enter")
         return question()
-    press("a")
+    wh.press("a")
     sleep(1)
-    press("s")
+    wh.press("s")
     sleep(1)
     if not wh.click_text(
         "Clear Rewards",
@@ -457,11 +485,11 @@ def handle_encounter():
         click=False,
         retry=False,
     ):
-        press("enter")
+        wh.press("enter")
         return question()
-    press("enter")
+    wh.press("enter")
     sleep(1)
-    press("enter")
+    wh.press("enter")
     sleep(2.0)
     return fight()
 
@@ -485,8 +513,8 @@ def run():
     wh.click_text("Claim", top=0.7, left=0.8, height=0.2)
     sleep(0.5)
     wh.click_text("Claim", top=0.7, left=0.6, width=0.2, height=0.2)
-    sleep(0.5)
-    wh.click_text("Confirm", top=0.6, left=0.5, width=0.2, height=0.2)
+    sleep(1)
+    wh.click_text("Confirm", top=0.6, left=0.5, width=0.2, height=0.2, retry=False)
     sleep(2)
     wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2)
     sleep(3)

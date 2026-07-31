@@ -388,20 +388,13 @@ class WindowHelper:
                 )
 
     def to_relative(self, x, y, relative=False):
-        if self.bounds:
-            if relative:
-                x = self.bounds[0] + x * (self.bounds[2] - self.bounds[0])
-                y = self.bounds[1] + y * (self.bounds[3] - self.bounds[1])
-            else:
-                x = (self.bounds[0]) + x
-                y = (self.bounds[1]) + y
-        elif relative:
+        if relative:
             x = int(x * self.width)
             y = int(y * self.height)
         return x + self.left, y + self.top
 
     @clicks
-    def click(self, x, y, relative=False, pre_click_delay=0.0, post_click_delay=0.2):
+    def click(self, x, y, relative=False, pre_click_delay=0.1, post_click_delay=0.2):
         from pyautogui import moveTo, position, click
 
         x, y = self.to_relative(x, y, relative)
@@ -448,7 +441,7 @@ class WindowHelper:
     @crops
     def read_screen(
         self,
-        confidence_threshold=0.2,
+        confidence_threshold=0.1,
         normalize_coordinates=True,
         use_cache=False,
         top=0.0,
@@ -463,7 +456,7 @@ class WindowHelper:
         if use_cache and self.ocr_cache is not None:
             return self.ocr_cache
 
-        img = np.array(self.screenshot())
+        img = cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR)
         results = self.ocr.readtext(image=img)
         results = [
             (
@@ -527,7 +520,7 @@ class WindowHelper:
             height,
         )
 
-        results = self.read_screen(confidence_threshold, False, use_cache)
+        results = self.read_screen(confidence_threshold, True, use_cache)
 
         if not results:
             if retry and not use_cache:

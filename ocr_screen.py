@@ -33,7 +33,7 @@ def main():
     while True:
         img = np.array(wh.screenshot())
 
-        results = reader.readtext(image=img)
+        results = reader.readtext(image=cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
         # results = wh.clump_ocr(results)
 
         for box, text, confidence in results:
