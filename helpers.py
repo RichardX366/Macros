@@ -495,7 +495,7 @@ class WindowHelper:
     def click_text(
         self,
         text,
-        confidence_threshold=0.2,
+        confidence_threshold=0.1,
         fuzz_threshold=90,
         use_cache=False,
         includes=False,
