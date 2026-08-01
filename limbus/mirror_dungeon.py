@@ -444,8 +444,11 @@ def handle_encounter():
     while not in_room_selection():
         sleep(1)
     sleep(1)
-    wh.press("d")
-    sleep(1)
+    while not wh.click_text(
+        "Enter", top=0.65, left=0.8, height=0.2, retry=False, click=False
+    ):
+        wh.press("d")
+        sleep(1)
     if not wh.click_text(
         "Clear Rewards",
         top=0.6,
@@ -459,8 +462,11 @@ def handle_encounter():
         return question()
     wh.press("a")
     sleep(1)
-    wh.press("w")
-    sleep(1)
+    while not wh.click_text(
+        "Enter", top=0.65, left=0.8, height=0.2, retry=False, click=False
+    ):
+        wh.press("w")
+        sleep(1)
     if not wh.click_text(
         "Clear Rewards",
         top=0.6,
@@ -474,8 +480,11 @@ def handle_encounter():
         return question()
     wh.press("a")
     sleep(1)
-    wh.press("s")
-    sleep(1)
+    while not wh.click_text(
+        "Enter", top=0.65, left=0.8, height=0.2, retry=False, click=False
+    ):
+        wh.press("s")
+        sleep(1)
     if not wh.click_text(
         "Clear Rewards",
         top=0.6,
