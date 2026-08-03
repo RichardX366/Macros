@@ -1,6 +1,7 @@
 from time import sleep
 
 from helpers import WindowHelper, bounding_box_center
+from limbus.enkephalin import redeem_enkephalin
 from limbus.open_limbus import launch_limbus
 
 wh: WindowHelper = None  # type: ignore
@@ -33,37 +34,8 @@ def battle():
 
 
 def main():
-    wh.mute(True)
+    redeem_enkephalin()
 
-    print("Loading game...")
-    while not wh.click_text(
-        "LUNACY", top=0.8, left=0.35, width=0.2, click=False, retry=False
-    ):
-        wh.click_text(
-            "FACE", top=0.6, left=0.3, height=0.2, width=0.4, includes=True, retry=False
-        )
-        sleep(5)
-
-    print("Opening Enkephalin screen...")
-    wh.click(0.3, 0.9, relative=True)
-    sleep(0.5)
-
-    print("Clicking >> button...")
-    text = wh.read_screen(top=0.3, left=0.3, height=0.5, width=0.4)
-    confirm_box = [t for t in text if "Confirm" in t[1]][0][0]
-    owned_box = [t for t in text if "Owned" in t[1]][0][0]
-    recovered_box = [t for t in text if "recovered" in t[1]][0][0]
-    x = confirm_box[1][0]
-    y = (owned_box[2][1] + recovered_box[0][1]) / 2
-    wh.click(x, y, pre_click_delay=0.2)
-
-    print("Confirming...")
-    confirm_center = bounding_box_center(confirm_box)
-    wh.click(
-        confirm_center[0],
-        confirm_center[1],
-    )
-    sleep(5)
     wh.click(0.1, 0.1, relative=True)  # Click outside to close the Enkephalin screen
 
     print("Opening Luxcavation screen...")
@@ -113,10 +85,21 @@ def main():
     print("Claiming Limbus Pass Rewards...")
     wh.click_text("Battle Pass", left=0.1, width=0.2, height=0.2)
     sleep(0.5)
-    wh.click_text("Claim", top=0.75, left=0.55, width=0.2, height=0.2, includes=True)
-    sleep(0.5)
-    wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2)
-    sleep(1)
+    for _ in range(10):
+        if wh.click_text(
+            "Claim",
+            top=0.75,
+            left=0.55,
+            width=0.2,
+            height=0.2,
+            includes=True,
+            retry=False,
+        ):
+            sleep(0.5)
+            wh.click_text("Confirm", top=0.6, left=0.4, width=0.2, height=0.2)
+            sleep(1)
+            return
+        sleep(1)
 
 
 if __name__ == "__main__":
