@@ -514,7 +514,8 @@ def complete_floor():
 
 def run():
     print("Begin Run")
-    enter()
+    if not in_room_selection():
+        enter()
     while complete_floor() != "Dungeon Complete":
         pass
     wh.click_text("Confirm", top=0.7, left=0.8, height=0.2)
