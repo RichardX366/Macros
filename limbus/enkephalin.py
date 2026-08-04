@@ -3,10 +3,8 @@ from time import sleep
 from helpers import WindowHelper, bounding_box_center
 from limbus.open_limbus import launch_limbus
 
-wh: WindowHelper = None  # type: ignore
 
-
-def redeem_enkephalin():
+def redeem_enkephalin(wh: WindowHelper):
     wh.mute(True)
 
     print("Loading game...")
@@ -48,15 +46,11 @@ def redeem_enkephalin():
     sleep(1)
 
 
-def main():
-    redeem_enkephalin()
-
-
 if __name__ == "__main__":
     try:
         launch_limbus()
         wh = WindowHelper("LimbusCompany")
-        main()
+        redeem_enkephalin(wh)
     except KeyboardInterrupt:
         pass
     finally:

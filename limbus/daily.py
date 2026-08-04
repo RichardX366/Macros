@@ -34,7 +34,7 @@ def battle():
 
 
 def main():
-    redeem_enkephalin()
+    redeem_enkephalin(wh)
 
     wh.click(0.1, 0.1, relative=True)  # Click outside to close the Enkephalin screen
 
