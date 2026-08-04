@@ -17,11 +17,9 @@ def battle():
             click=False,
             retry=False,
         ):
-            wh.focus_window()
             wh.press("p")
             sleep(0.1)
             wh.press("enter")
-            wh.restore_previous_window()
             sleep(5)
         if wh.click_text(
             "Confirm",
