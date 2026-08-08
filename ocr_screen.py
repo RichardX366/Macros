@@ -69,6 +69,13 @@ def main():
             True, which="major", color="white", linestyle="--", linewidth=0.8, alpha=0.6
         )
         plt.show()
+        wh.set_window_box()
+        wh.set_bounds(
+            top=args.top,
+            left=args.left,
+            width=args.width,
+            height=args.height,
+        )
 
 
 if __name__ == "__main__":

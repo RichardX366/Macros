@@ -203,6 +203,10 @@ def kill_keybind(key="ctrl+\\"):
     keyboard.add_hotkey(key, lambda: os._exit(0), suppress=True)
 
 
+def pause_keybind(key="ctrl+]"):
+    keyboard.add_hotkey(key, lambda: breakpoint(), suppress=True)
+
+
 class WindowHelper:
     def set_window_box(self):
         if is_windows():
@@ -249,7 +253,7 @@ class WindowHelper:
 
         print("Window Helper initialized for:", self.title)
 
-    def screenshot(self) -> Image.Image:
+    def screenshot(self, threshold: float | None = None) -> Image.Image:
         """
         Capture a screenshot of the window and store it in memory.
         Handles per-monitor DPI scaling on multi-monitor setups.
@@ -276,6 +280,18 @@ class WindowHelper:
                 )
 
             # download_screenshot(image)
+
+            if threshold is not None:
+                image = cv2.threshold(
+                    cv2.cvtColor(
+                        cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR),
+                        cv2.COLOR_BGR2GRAY,
+                    ),
+                    int(threshold * 255),
+                    255.0,
+                    cv2.THRESH_BINARY,
+                )[1]
+                image = Image.fromarray(image)
 
             return image
 
@@ -406,16 +422,27 @@ class WindowHelper:
         return x + self.left, y + self.top
 
     @clicks
-    def click(self, x, y, relative=False, pre_click_delay=0.1, post_click_delay=0.2):
+    def click(
+        self,
+        x,
+        y,
+        relative=False,
+        focus=True,
+        restore_position=True,
+        pre_click_delay=0.1,
+        post_click_delay=0.2,
+    ):
         from pyautogui import moveTo, position, click
 
         x, y = self.to_relative(x, y, relative)
 
-        self.old_pointer_pos = position()
+        if restore_position:
+            self.old_pointer_pos = position()
 
         global pre_click_delay_global, post_click_delay_global
 
-        self.focus_window()
+        if focus:
+            self.focus_window()
 
         if pre_click_delay_global > 0:
             moveTo(x, y)
@@ -426,11 +453,12 @@ class WindowHelper:
         if post_click_delay_global > 0:
             sleep(post_click_delay_global)
 
-        if self.old_pointer_pos:
+        if restore_position and self.old_pointer_pos:
             moveTo(int(self.old_pointer_pos[0]), int(self.old_pointer_pos[1]))
             self.old_pointer_pos = None
 
-        self.restore_previous_window()
+        if focus:
+            self.restore_previous_window()
 
     def drag(self, x1, y1, x2, y2, duration=0.5, relative=False, release=True):
         from pyautogui import moveTo, position, mouseDown, mouseUp
@@ -476,7 +504,7 @@ class WindowHelper:
 
         if image is None:
             image = cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR)
-        results = self.ocr.readtext(image=image)
+        results = self.ocr.readtext(image=np.array(image))
         results = [
             (
                 [
@@ -686,7 +714,6 @@ class WindowHelper:
         _, confidence, _, location = cv2.minMaxLoc(result)
         x, y = location
         h, w = template.shape[:2]
-        print(confidence)
         if confidence > confidence_threshold:
             return (x + w / 2) + left * self.width, (y + h / 2) + top * self.height
 
