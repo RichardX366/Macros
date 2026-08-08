@@ -65,6 +65,9 @@ def main():
             np.linspace(0, h, 11),
             ["0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"],
         )
+        plt.grid(
+            True, which="major", color="white", linestyle="--", linewidth=0.8, alpha=0.6
+        )
         plt.show()
 
 

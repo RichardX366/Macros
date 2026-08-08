@@ -4,6 +4,7 @@ from json import dumps, loads
 
 from math import exp
 from os import popen
+import os
 import subprocess
 from time import sleep
 from typing import Any, cast
@@ -16,6 +17,7 @@ import pygetwindow as gw
 from PIL import Image, ImageChops, ImageGrab
 import io
 from rapidfuzz import process, fuzz
+import keyboard
 
 pre_click_delay_global = 0.0
 post_click_delay_global = 0.2
@@ -29,7 +31,9 @@ def crops(func):
     def wrapper(self, *args, top=0.0, left=0.0, width=0.0, height=0.0, **kwargs):
         if top or left or width or height:
             self.set_bounds(top, left, width, height)
-        result = func(self, *args, **kwargs)
+        result = func(
+            self, *args, top=top, left=left, width=width, height=height, **kwargs
+        )
         if top or left or width or height:
             self.bounds = None
         return result
@@ -39,7 +43,7 @@ def crops(func):
 
 def clicks(func):
     @wraps(func)
-    def wrapper(self, *args, pre_click_delay=0.0, post_click_delay=0.2, **kwargs):
+    def wrapper(self, *args, pre_click_delay=0.1, post_click_delay=0.2, **kwargs):
         global pre_click_delay_global, post_click_delay_global
         pre_set = pre_click_delay != 0.0
         post_set = post_click_delay != 0.2
@@ -193,6 +197,10 @@ def sleep_windows():
     popen(
         """powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)" """
     )
+
+
+def kill_keybind(key="ctrl+\\"):
+    keyboard.add_hotkey(key, lambda: os._exit(0), suppress=True)
 
 
 class WindowHelper:
@@ -407,6 +415,8 @@ class WindowHelper:
 
         global pre_click_delay_global, post_click_delay_global
 
+        self.focus_window()
+
         if pre_click_delay_global > 0:
             moveTo(x, y)
             sleep(pre_click_delay_global)
@@ -420,7 +430,9 @@ class WindowHelper:
             moveTo(int(self.old_pointer_pos[0]), int(self.old_pointer_pos[1]))
             self.old_pointer_pos = None
 
-    def drag(self, x1, y1, x2, y2, duration=0.5, relative=False):
+        self.restore_previous_window()
+
+    def drag(self, x1, y1, x2, y2, duration=0.5, relative=False, release=True):
         from pyautogui import moveTo, position, mouseDown, mouseUp
 
         x1, y1 = self.to_relative(x1, y1, relative)
@@ -430,15 +442,16 @@ class WindowHelper:
 
         # Use pyautogui to perform a smooth drag
         moveTo(int(x1), int(y1))
-        sleep(0.5)
+        sleep(0.1)
         mouseDown()
 
         # dragTo will move the cursor to the target over duration
         moveTo(int(x2), int(y2), duration=duration)
-        mouseUp()
+        if release:
+            mouseUp()
         sleep(0.1)
 
-        if self.old_pointer_pos:
+        if self.old_pointer_pos and release:
             moveTo(int(self.old_pointer_pos[0]), int(self.old_pointer_pos[1]))
             self.old_pointer_pos = None
 
@@ -448,6 +461,7 @@ class WindowHelper:
         confidence_threshold=0.1,
         normalize_coordinates=True,
         use_cache=False,
+        image=None,
         top=0.0,
         left=0.0,
         width=0.0,
@@ -460,8 +474,9 @@ class WindowHelper:
         if use_cache and self.ocr_cache is not None:
             return self.ocr_cache
 
-        img = cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR)
-        results = self.ocr.readtext(image=img)
+        if image is None:
+            image = cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR)
+        results = self.ocr.readtext(image=image)
         results = [
             (
                 [
@@ -506,67 +521,55 @@ class WindowHelper:
         left=0.0,
         width=0.0,
         height=0.0,
-        pre_click_delay=0.0,
+        pre_click_delay=0.1,
         post_click_delay=0.2,
     ):
-        args = (
-            text,
-            confidence_threshold,
-            fuzz_threshold,
-            use_cache,
-            includes,
-            click,
-            split_spaces,
-            retry,
-            top,
-            left,
-            width,
-            height,
-        )
+        while True:
+            results = self.read_screen(confidence_threshold, True, use_cache)
 
-        results = self.read_screen(confidence_threshold, True, use_cache)
+            if not results:
+                if retry and not use_cache:
+                    sleep(0.5)
+                    continue
+                return False
 
-        if not results:
-            if retry and not use_cache:
-                sleep(1)
-                return self.click_text(*args)
-            return False
+            if split_spaces:
+                results = [
+                    t
+                    for r in results
+                    for t in [(r[0], x, r[2]) for x in r[1].split(" ")]
+                ]
 
-        if split_spaces:
-            results = [
-                t for r in results for t in [(r[0], x, r[2]) for x in r[1].split(" ")]
-            ]
+            if includes:
+                for box, detected_text, confidence in results:
+                    if text.lower() in detected_text.lower():
+                        click_x, click_y = bounding_box_center(box)
 
-        if includes:
-            for box, detected_text, confidence in results:
-                if text.lower() in detected_text.lower():
-                    click_x, click_y = bounding_box_center(box)
+                        if click:
+                            self.click(click_x, click_y)
 
-                    if click:
-                        self.click(click_x, click_y)
+                        return (box, detected_text, confidence)
 
-                    return (box, detected_text, confidence)
+            match, score, index = process.extractOne(
+                text.lower(),
+                [detected_text.lower() for _, detected_text, _ in results],
+                scorer=fuzz.WRatio,
+            )
 
-        match, score, index = process.extractOne(
-            text.lower(),
-            [detected_text.lower() for _, detected_text, _ in results],
-            scorer=fuzz.WRatio,
-        )
+            if score > fuzz_threshold:
+                box, detected_text, confidence = results[index]
+                # print(detected_text, confidence, score)
+                click_x, click_y = bounding_box_center(box)
 
-        if score > fuzz_threshold:
-            box, detected_text, confidence = results[index]
-            # print(detected_text, confidence, score)
-            click_x, click_y = bounding_box_center(box)
+                if click:
+                    self.click(click_x, click_y)
 
-            if click:
-                self.click(click_x, click_y)
-
-            return (box, detected_text, confidence)
-        else:
-            if retry and not use_cache:
-                sleep(1)
-                return self.click_text(*args)
-            return False
+                return (box, detected_text, confidence)
+            else:
+                if retry and not use_cache:
+                    sleep(0.5)
+                    continue
+                return False
 
     def clump_ocr(self, text: list, relative_distance=0.05):
         if self.bounds:
@@ -652,3 +655,51 @@ class WindowHelper:
                     f'tell application "{self.window}" to quit',
                 ]
             )
+
+    @crops
+    def match_template(
+        self,
+        template: np.ndarray,
+        threshold=0.5,
+        confidence_threshold=0.4,
+        top=0.0,
+        left=0.0,
+        width=0.0,
+        height=0.0,
+    ) -> tuple[float, float] | None:
+        image = cv2.threshold(
+            cv2.cvtColor(
+                cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR),
+                cv2.COLOR_BGR2GRAY,
+            ),
+            int(threshold * 255),
+            255.0,
+            cv2.THRESH_BINARY,
+        )[1]
+        # download_screenshot(Image.fromarray(image), "screenshot.png")
+
+        result = cv2.matchTemplate(
+            image,
+            template,
+            cv2.TM_CCOEFF_NORMED,
+        )
+        _, confidence, _, location = cv2.minMaxLoc(result)
+        x, y = location
+        h, w = template.shape[:2]
+        print(confidence)
+        if confidence > confidence_threshold:
+            return (x + w / 2) + left * self.width, (y + h / 2) + top * self.height
+
+    @crops
+    def download_bw(self, threshold=0.5, top=0.0, left=0.0, width=0.0, height=0.0):
+        image = cv2.threshold(
+            cv2.cvtColor(
+                cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR),
+                cv2.COLOR_BGR2GRAY,
+            ),
+            int(threshold * 255),
+            255.0,
+            cv2.THRESH_BINARY,
+        )[1]
+
+        download_screenshot(Image.fromarray(image), "screenshot.png")
