@@ -26,33 +26,33 @@ packs = [
 ]
 difficulties = [True, True, True, True]
 poise_gifts = [
-    "Spiderweb",
-    "Clear",
-    "Tomb",
-    "Reminiscence",
-    "Conceit",
-    "Lucky",
-    "Cask",
-    "Finifugality",
-    "Clover",
-    "Pendant",
-    "Nebulizer",
-    "Endorphin",
-    "Ornamental",
-    "Share",
-    "Emerald",
-    "Old Wooden",
-    "Cigarette",
-    "Recollection",
-    "Angel",
+    "spiderweb",
+    "clear",
+    "tomb",
+    "reminiscence",
+    "conceit",
+    "lucky",
+    "cask",
+    "finifugality",
+    "clover",
+    "pendant",
+    "nebulizer",
+    "endorphin",
+    "ornamental",
+    "share",
+    "emerald",
+    "old wooden",
+    "cigarette",
+    "recollection",
+    "angel",
     "pom",
     "sack",
-    "Broken Blade",
-    "Ragged Bamboo",
-    "Commemorative",
+    "broken blade",
+    "ragged bamboo",
+    "commemorative",
 ]
 enhance_costs = (0, 100, 120, 150, 200)
-enhanceable = ["Clear", "Tomb", "Nebulizer"]
+enhanceable = ["clear", "tomb", "nebulizer"]
 currently_enhanced = set()
 
 # Helpers
@@ -126,14 +126,27 @@ def handle_gift():
                 current_gift = {"owned": False, "name": "", "box": ()}
             else:
                 current_gift["name"] = t[1] + " "
+        gift_levels = get_gift_levels()
+
+        def get_level(gift: dict):
+            return get_gift_level(
+                gift["box"][3],
+                [l for l in gift_levels if l["x"] < gift["box"][0][0]],
+                up=False,
+            )
+
         gifts.sort(
             key=lambda x: (
-                9999
+                9999 - get_level(x)
                 if x["owned"]
                 else (
                     min(
-                        (i for i, gift in enumerate(poise_gifts) if gift in x["name"]),
-                        default=999,
+                        (
+                            i
+                            for i, gift in enumerate(poise_gifts)
+                            if gift in x["name"].lower()
+                        ),
+                        default=999 - get_level(x),
                     )
                 )
             )
@@ -171,7 +184,7 @@ def roll_for_pack(packs: list[str], hard: bool = False):
 
     print("Rolling for packs:", packs)
 
-    sleep(1.5)
+    sleep(3)
     for _ in range(4):
         read_packs = wh.read_screen(top=0.5, left=0.1, width=0.8, height=0.2)
         print("Found packs:", [t[1] for t in read_packs])
@@ -199,7 +212,7 @@ def roll_for_pack(packs: list[str], hard: bool = False):
                 print("Found packs:", [t[1] for t in cast(list, wh.ocr_cache)])
                 x, y = position()
                 wh.drag(0.5, 0.7, 0.5, 0.35, relative=True, release=False)
-                sleep(0.5)
+                sleep(0.2)
                 mouseUp()
                 moveTo(x, y)
                 wh.read_screen(top=0.45, left=0.45, height=0.2)
@@ -209,7 +222,7 @@ def roll_for_pack(packs: list[str], hard: bool = False):
             wh.click_text("Confirm", top=0.6, left=0.5, width=0.2, height=0.2)
         else:
             wh.click(0.85, 0.1, relative=True)
-        sleep(1.5)
+        sleep(3)
 
     box = [[0]]
     wh.read_screen(top=0.5, left=0.1, width=0.8, height=0.2)
@@ -320,7 +333,7 @@ def bounding_distance(box1, box2):
 
 def index_to_gift_coord(index: int):
     x_diff = 0.08
-    y_diff = 0.12
+    y_diff = 0.14
     row = index // 5
     col = index % 5
     x = 0.52 + col * x_diff
@@ -422,22 +435,72 @@ def get_gift_levels():
     return merged
 
 
-def get_gift_level(index: int, blobs: list[dict]):
-    coords = index_to_gift_coord(index)
-    x = coords[0] * wh.width
-    y = coords[1] * wh.height
-    fit = [b for b in blobs if b["x"] < x and b["y"] < y]
-    fit.sort(key=lambda b: x - b["x"] + y - b["y"])
+def get_gift_level(index: int | tuple[int, int], blobs: list[dict], up=True, left=True):
+    if isinstance(index, int):
+        coords = index_to_gift_coord(index)
+        x = coords[0] * wh.width
+        y = coords[1] * wh.height
+    else:
+        x, y = index
+    fit = [
+        b
+        for b in blobs
+        if (b["x"] < x if left else b["x"] > x) and (b["y"] < y if up else b["y"] > y)
+    ]
+    fit.sort(key=lambda b: abs(x - b["x"]) + abs(y - b["y"]))
     return fit[0]["text"] if fit else 0
 
 
-def get_gift_list(shift_vestiges=False):
+def scroll_gift(gift_index: int = 5, down=True):
+    from pyautogui import mouseUp, position, moveTo
+
+    i = gift_index // 5
+
+    x, y = position()
+    scroll_from = index_to_gift_coord(10) if down else index_to_gift_coord(0)
+    scroll_to = index_to_gift_coord(10 - 5 * i) if down else index_to_gift_coord(5 * i)
+    wh.drag(
+        *scroll_from,
+        *scroll_to,
+        relative=True,
+        release=False,
+    )
+    sleep(0.2)
+    mouseUp()
+    moveTo(x, y)
+
+
+def click_gift(index: int):
+    diff = 0
+    if index >= 15:
+        scroll_gift(index - 10)
+        diff = (index - 10) // 5 * 5
+    wh.click(*index_to_gift_coord(index - diff), relative=True)
+    if index >= 15:
+        scroll_gift(index - 10, down=False)
+
+
+def get_gift_list():
     wh.click_text("Enhance", top=0.5, left=0.1, width=0.1, height=0.1)
     sleep(0.5)
     blobs = get_gift_levels()
     blobs = [b for b in blobs if b["x"] > 0.5 * wh.width and b["y"] > 0.3 * wh.height]
     gifts = []
-    for i in range(len(blobs)):
+
+    def scroll_signature():
+        nonlocal blobs
+        blobs = get_gift_levels()
+        blobs = [
+            b for b in blobs if b["x"] > 0.5 * wh.width and b["y"] > 0.3 * wh.height
+        ]
+        return " ".join([str(get_gift_level(i, blobs)) for i in range(len(blobs))])
+
+    def is_more():
+        old = " ".join([str(get_gift_level(i, blobs)) for i in range(len(blobs))])
+        scroll_gift()
+        return scroll_signature() != old
+
+    def add_gift(i):
         wh.click(
             *index_to_gift_coord(i),
             relative=True,
@@ -461,11 +524,23 @@ def get_gift_list(shift_vestiges=False):
             "level": get_gift_level(i, blobs),
         }
         gifts.append(gift)
+
+    for i in range(len(blobs)):
+        add_gift(i)
+
+    scrolls = 0
+
+    while is_more():
+        scrolls += 5
+        extras = len(blobs) - 10
+        for i in range(extras):
+            add_gift(i + 10)
+        if extras < 5:
+            break
+
+    scroll_gift(scrolls, False)
+
     wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
-    if shift_vestiges:
-        return [g for g in gifts if " Vestige" in g["name"]] + [
-            g for g in gifts if " Vestige" not in g["name"]
-        ]
     return gifts
 
 
@@ -592,9 +667,9 @@ def handle_shop():
     def get_balance(iter=0):
         balance_text = wh.read_screen(top=0.1, left=0.4, width=0.2, height=0.2)
         balance = [
-            t[1].replace(",", "")
+            t[1].replace(",", "").replace("G", "6")
             for t in balance_text
-            if t[1].replace(",", "").isnumeric()
+            if t[1].replace(",", "").replace("G", "6").isnumeric()
         ]
         if not balance and iter < 3:
             sleep(0.5)
@@ -614,7 +689,7 @@ def handle_shop():
 
     text = wh.read_screen(top=0.3, left=0.4, width=0.5, height=0.5)
 
-    gift_list = get_gift_list(True)
+    gift_list = []
 
     def is_purchased(t):
         x, y = bounding_box_center(t[0])
@@ -681,7 +756,7 @@ def handle_shop():
                 label = sorted(text, key=lambda x: bounding_distance(t[0], x[0]))[1][1]
                 poise = False
                 for gift in poise_gifts:
-                    if gift in label:
+                    if gift in label.lower():
                         poise = True
                         break
                 if not poise:
@@ -701,39 +776,44 @@ def handle_shop():
         sleep(1)
 
     def buy_items():
+        nonlocal gift_list
         sleep(0.5)
         items = get_items()
         balance = get_balance()
         if balance >= 120:
             replace_skill()
             balance = get_balance()
-        gift_names = [g["name"] for g in gift_list]
         for item in items:
             if int(item["cost"]) <= balance:
                 purchase(item)
-                gift_names.append(item["name"])
                 balance -= int(item["cost"])
             else:
                 break
+        gift_list = get_gift_list()
         if any(
-            any(e in g and e not in currently_enhanced for e in enhanceable)
-            for g in gift_names
+            any(
+                e in g["name"].lower() and e not in currently_enhanced
+                for e in enhanceable
+            )
+            for g in gift_list
         ):
-            gl = get_gift_list()
             to_enhance = [
                 g
-                for g in gl
+                for g in gift_list
                 if any(
-                    e in g["name"] and e not in currently_enhanced for e in enhanceable
+                    e in g["name"].lower() and e not in currently_enhanced
+                    for e in enhanceable
                 )
             ]
             costs = [enhance_costs[g["level"]] for g in to_enhance]
             balance = get_balance()
             for cost, gift in zip(costs, to_enhance):
                 if cost <= balance:
-                    power_up_gift(gl.index(gift))
+                    power_up_gift(gift_list.index(gift))
                     currently_enhanced.add(
-                        [name for name in enhanceable if name in gift["name"]][0]
+                        [name for name in enhanceable if name in gift["name"].lower()][
+                            0
+                        ]
                     )
                     balance -= cost
 
@@ -748,26 +828,37 @@ def handle_shop():
             wh.click_text("Refresh", top=0.75, left=0.5, width=0.2, height=0.1)
             buy_items()
 
-    def fuse(gifts: list[int]):
+    def fusion_menu(type="POISE"):
         wh.click_text("Fuse", top=0.5, left=0.2, width=0.1, height=0.1)
         sleep(0.5)
         wh.click(0.5, 0.3, relative=True)
-        wh.click_text("POISE", top=0.6, left=0.2, width=0.1, height=0.1)
+        wh.click_text(type, top=0.6, left=0.2, width=0.1, height=0.1)
         wh.click_text("Confirm", top=0.75, left=0.5, width=0.2, height=0.1)
         sleep(0.5)
+
+    def fuse(gifts: list[int]):
+        fusion_menu()
+        if fuse_specials():
+            wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
+            sleep(0.5)
+            return
         for i in range(3):
-            wh.click(*index_to_gift_coord(gifts[i]), relative=True)
+            click_gift(gifts[i])
         wh.click_text("Fuse", top=0.8, left=0.6, width=0.1, height=0.1)
         sleep(0.5)
         wh.click_text("Fuse", top=0.8, left=0.6, width=0.1, height=0.1, use_cache=True)
         wh.click_text("Confirm", top=0.7, left=0.4, width=0.2, height=0.1)
         wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
+        sleep(0.5)
 
     def remove_preserved(gifts: list[dict]):
+        gifts = [g for g in gifts if " Vestige" in g["name"]] + [
+            g for g in gifts if " Vestige" not in g["name"]
+        ]
         excess_gifts = [
             (i, g)
             for i, g in enumerate(gifts)
-            if g["level"] < 4 and not any(p in g["name"] for p in poise_gifts)
+            if g["level"] < 4 and not any(p in g["name"].lower() for p in poise_gifts)
         ]
         removed = []
         l3 = [g[0] for g in excess_gifts if g[1]["level"] == 3]
@@ -784,16 +875,51 @@ def handle_shop():
             removed.append(l2[0])
         return removed, [g[0] for g in excess_gifts]
 
+    def fuse_specials():
+        def fusion_available():
+            wh.set_bounds(0.25, 0.45, 0.2, 0.1)
+            bw = cv2.threshold(
+                cv2.cvtColor(
+                    cv2.cvtColor(np.array(wh.screenshot()), cv2.COLOR_RGB2BGR),
+                    cv2.COLOR_BGR2GRAY,
+                ),
+                200,
+                255.0,
+                cv2.THRESH_BINARY,
+            )[1]
+            text = wh.read_screen(image=bw, top=0.25, left=0.45, width=0.2, height=0.1)
+            return any("Fusion" in t[1] for t in text)
+
+        fused = False
+
+        while fusion_available():
+            for i in range(5):
+                wh.click(
+                    *index_to_gift_coord(i),
+                    relative=True,
+                    pre_click_delay=0.0,
+                    post_click_delay=0.0,
+                )
+            wh.click_text("Fuse", top=0.8, left=0.6, width=0.1, height=0.1)
+            sleep(0.5)
+            wh.click_text(
+                "Fuse", top=0.8, left=0.6, width=0.1, height=0.1, use_cache=True
+            )
+            wh.click_text("Confirm", top=0.7, left=0.4, width=0.2, height=0.1)
+            fused = True
+        return fused
+
     removed, gifts = remove_preserved(gift_list)
+    # Tier 4
     while len(removed) > 2:
         fuse(removed)
-        removed, gifts = remove_preserved(get_gift_list(True))
+        removed, gifts = remove_preserved(get_gift_list())
 
     while len(gifts) > 2:
         fuse(gifts[:3])
-        if len(gifts) < 5:
+        if len(gifts) < 6:
             break
-        removed, gifts = remove_preserved(get_gift_list(True))
+        removed, gifts = remove_preserved(get_gift_list())
 
     wh.click_text("Leave", top=0.8, left=0.8)
     sleep(0.5)
