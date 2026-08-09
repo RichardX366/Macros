@@ -600,7 +600,7 @@ def accept_gift(optional=False):
     if len(name) < 5:
         print("Short name", name)
     wh.click(*bounding_box_center(box))
-    print("Accepting gift: Level", f"{name} ({ego_gifts[-1]["level"]})")
+    print("Accepting gift:", f"{name} ({ego_gifts[-1]["level"]})")
     return True
 
 
@@ -980,15 +980,12 @@ def handle_shop():
         sleep(0.5)
         wh.click_text("Fuse", top=0.8, left=0.6, width=0.1, height=0.1, use_cache=True)
         sleep(0.5)
-        accept_gift()
-        sleep(0.5)
         print(
             "Fusing gifts:",
             [f"{g["name"]} ({g["level"]})" for g in gifts],
-            "into",
-            ego_gifts[-1]["name"],
-            f"({ego_gifts[-1]['level']})",
         )
+        accept_gift()
+        sleep(0.5)
 
     def remove_preserved():
         excess_gifts = [
