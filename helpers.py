@@ -28,14 +28,40 @@ post_click_delay_global = 0.2
 
 def crops(func):
     @wraps(func)
-    def wrapper(self, *args, top=0.0, left=0.0, width=0.0, height=0.0, **kwargs):
+    def wrapper(
+        self,
+        *args,
+        top=0.0,
+        left=0.0,
+        width=0.0,
+        height=0.0,
+        saturation=0.0,
+        brightness=0.0,
+        **kwargs,
+    ):
         if top or left or width or height:
             self.set_bounds(top, left, width, height)
+        if saturation:
+            self.saturation = saturation
+        if brightness:
+            self.brightness = brightness
         result = func(
-            self, *args, top=top, left=left, width=width, height=height, **kwargs
+            self,
+            *args,
+            top=top,
+            left=left,
+            width=width,
+            height=height,
+            saturation=saturation,
+            brightness=brightness,
+            **kwargs,
         )
         if top or left or width or height:
             self.bounds = None
+        if saturation:
+            self.saturation = 0.0
+        if brightness:
+            self.brightness = 0.0
         return result
 
     return wrapper
@@ -243,6 +269,8 @@ class WindowHelper:
         self.bounds = None
         self.ocr_cache = None
         self.old_pointer_pos = None
+        self.brightness = 0.0
+        self.saturation = 0.0
 
         self.set_window_box()
 
@@ -253,7 +281,16 @@ class WindowHelper:
 
         print("Window Helper initialized for:", self.title)
 
-    def screenshot(self, threshold: float | None = None) -> Image.Image:
+    @crops
+    def screenshot(
+        self,
+        top=0.0,
+        left=0.0,
+        width=0.0,
+        height=0.0,
+        brightness=0.0,
+        saturation=0.0,
+    ) -> Image.Image:
         """
         Capture a screenshot of the window and store it in memory.
         Handles per-monitor DPI scaling on multi-monitor setups.
@@ -281,17 +318,40 @@ class WindowHelper:
 
             # download_screenshot(image)
 
-            if threshold is not None:
-                image = cv2.threshold(
-                    cv2.cvtColor(
-                        cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR),
-                        cv2.COLOR_BGR2GRAY,
-                    ),
-                    int(threshold * 255),
-                    255.0,
-                    cv2.THRESH_BINARY,
-                )[1]
-                image = Image.fromarray(image)
+            hsv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2HSV)
+            mask = np.ones(hsv.shape[:2], dtype=np.uint8) * 255
+            if self.brightness:
+                mask = cv2.bitwise_and(
+                    mask,
+                    cv2.threshold(
+                        hsv[:, :, 2],
+                        int(abs(self.brightness) * 255),
+                        255,
+                        (
+                            cv2.THRESH_BINARY
+                            if self.brightness > 0
+                            else cv2.THRESH_BINARY_INV
+                        ),
+                    )[1],
+                )
+
+            if self.saturation:
+                mask = cv2.bitwise_and(
+                    mask,
+                    cv2.threshold(
+                        hsv[:, :, 1],
+                        int(abs(self.saturation) * 255),
+                        255,
+                        (
+                            cv2.THRESH_BINARY
+                            if self.saturation > 0
+                            else cv2.THRESH_BINARY_INV
+                        ),
+                    )[1],
+                )
+
+            if self.brightness or self.saturation:
+                image = Image.fromarray(mask)
 
             return image
 
@@ -326,7 +386,16 @@ class WindowHelper:
         )
 
     @crops
-    def get_diff_rate(self, duration=0.5, top=0.0, left=0.0, width=0.0, height=0.0):
+    def get_diff_rate(
+        self,
+        duration=0.5,
+        top=0.0,
+        left=0.0,
+        width=0.0,
+        height=0.0,
+        brightness=0.0,
+        saturation=0.0,
+    ):
         sc1 = self.screenshot().convert("L")
         sleep(duration)
         sc2 = self.screenshot().convert("L")
@@ -494,6 +563,8 @@ class WindowHelper:
         left=0.0,
         width=0.0,
         height=0.0,
+        brightness=0.0,
+        saturation=0.0,
     ):
         """
         Perform OCR on the current window's screenshot and return detected text with bounding boxes. Returns a list of tuples containing bounding box coordinates, detected text, and confidence score.
@@ -508,14 +579,14 @@ class WindowHelper:
         results = [
             (
                 [
-                    [
+                    (
                         cast(int, x) / self.dpi,
                         cast(int, y) / self.dpi,
-                    ]
+                    )
                     for x, y in box
                 ],
-                detected_text,
-                confidence,
+                cast(str, detected_text),
+                cast(float, confidence),
             )
             for box, detected_text, confidence in results
             if cast(float, confidence) > confidence_threshold
@@ -525,9 +596,8 @@ class WindowHelper:
         if normalize_coordinates and self.bounds:
             for result in results:
                 box = result[0]
-                for point in box:
-                    point[0] += self.bounds[0]
-                    point[1] += self.bounds[1]
+                for i in range(len(box)):
+                    box[i] = (box[i][0] + self.bounds[0], box[i][1] + self.bounds[1])
 
         self.ocr_cache = results
 
@@ -549,6 +619,8 @@ class WindowHelper:
         left=0.0,
         width=0.0,
         height=0.0,
+        brightness=0.0,
+        saturation=0.0,
         pre_click_delay=0.1,
         post_click_delay=0.2,
     ):
@@ -688,23 +760,15 @@ class WindowHelper:
     def match_template(
         self,
         template: np.ndarray,
-        threshold=0.5,
         confidence_threshold=0.4,
         top=0.0,
         left=0.0,
         width=0.0,
         height=0.0,
+        brightness=0.0,
+        saturation=0.0,
     ) -> tuple[float, float] | None:
-        image = cv2.threshold(
-            cv2.cvtColor(
-                cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR),
-                cv2.COLOR_BGR2GRAY,
-            ),
-            int(threshold * 255),
-            255.0,
-            cv2.THRESH_BINARY,
-        )[1]
-        # download_screenshot(Image.fromarray(image), "screenshot.png")
+        image = np.array(self.screenshot())
 
         result = cv2.matchTemplate(
             image,
@@ -716,17 +780,3 @@ class WindowHelper:
         h, w = template.shape[:2]
         if confidence > confidence_threshold:
             return (x + w / 2) + left * self.width, (y + h / 2) + top * self.height
-
-    @crops
-    def download_bw(self, threshold=0.5, top=0.0, left=0.0, width=0.0, height=0.0):
-        image = cv2.threshold(
-            cv2.cvtColor(
-                cv2.cvtColor(np.array(self.screenshot()), cv2.COLOR_RGB2BGR),
-                cv2.COLOR_BGR2GRAY,
-            ),
-            int(threshold * 255),
-            255.0,
-            cv2.THRESH_BINARY,
-        )[1]
-
-        download_screenshot(Image.fromarray(image), "screenshot.png")
