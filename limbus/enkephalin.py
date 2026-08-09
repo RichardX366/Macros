@@ -4,7 +4,7 @@ from helpers import WindowHelper, bounding_box_center
 from limbus.open_limbus import launch_limbus
 
 
-def redeem_enkephalin(wh: WindowHelper):
+def redeem_enkephalin(wh: WindowHelper, use_lunacy=0):
     wh.mute(True)
 
     print("Loading game...")
@@ -27,21 +27,26 @@ def redeem_enkephalin(wh: WindowHelper):
     wh.click(0.3, 0.9, relative=True)
     sleep(1.0)
 
-    print("Clicking >> button...")
-    text = wh.read_screen(top=0.2, left=0.3, height=0.6, width=0.4)
+    bounds: dict = {"top": 0.2, "left": 0.3, "height": 0.6, "width": 0.4}
+    text = wh.read_screen(**bounds)
     confirm_box = [t for t in text if "Confirm" in t[1]][0][0]
     owned_box = [t for t in text if "Owned" in t[1]][0][0]
     use_boxes_box = [t for t in text if "Boxes" in t[1]][0][0]
+
+    if use_lunacy:
+        print("Refilling with Lunacy...")
+        wh.click_text("Use Lunacy", **bounds, use_cache=True)
+        for _ in range(use_lunacy):
+            wh.click(*bounding_box_center(confirm_box))
+        wh.click_text("Modules", **bounds, use_cache=True)
+
+    print("Clicking >> button...")
     x = confirm_box[2][0]
     y = bounding_box_center(owned_box)[1] + owned_box[0][1] - use_boxes_box[0][1]
     wh.click(x, y, pre_click_delay=0.2)
 
     print("Confirming...")
-    confirm_center = bounding_box_center(confirm_box)
-    wh.click(
-        confirm_center[0],
-        confirm_center[1],
-    )
+    wh.click(*bounding_box_center(confirm_box))
 
     sleep(1)
 

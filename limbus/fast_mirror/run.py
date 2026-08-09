@@ -48,7 +48,6 @@ poise_gifts = [
     "clear",
     "tomb",
     "commemorative",
-    "conceit",
     "ragged bamboo",
     "lucky",
     "cask",
@@ -72,6 +71,14 @@ poise_gifts = [
 enhance_costs = (0, 150, 180, 225, 300)
 enhanceable = ["clear", "tomb", "ebulizer", "emerald"]
 currently_enhanced = set()
+recipes = [
+    [3, 3, 2],  # 4
+    [4, 2, 2],  # 4
+    [4, 3, 1],  # 4
+    [4, 3, 2],  # 4
+    [2, 2, 2],  # 3
+    [2, 1, 1],  # 2
+]
 unit_distance = 0.0
 killed_teammates = False
 ego_gifts = []
@@ -482,7 +489,7 @@ def get_gift_level(
 
 
 def scroll_gift(gift_index: int = 5, down=True):
-    if gift_index == 0:
+    if gift_index < 5:
         return
     from pyautogui import mouseUp, position, moveTo
 
@@ -502,14 +509,14 @@ def scroll_gift(gift_index: int = 5, down=True):
     moveTo(x, y)
 
 
-def click_gift(index: int):
+def click_gift(index: int, scroll_back=True):
     diff = 0
     if index >= 15:
-        scroll_gift(index - 10)
         diff = (index - 10) // 5 * 5
+        scroll_gift(diff)
     wh.click(*index_to_gift_coord(index - diff), relative=True)
-    if index >= 15:
-        scroll_gift(index - 10, down=False)
+    if index >= 15 and scroll_back:
+        scroll_gift(diff, down=False)
     return diff
 
 
@@ -588,10 +595,19 @@ def accept_gift(optional=False):
         return False
     box, text, confidence = hit
 
-    text = wh.read_screen(
-        top=0.55, left=0.25, width=0.15, height=0.15, brightness=0.7, saturation=-0.5
-    )
-    name = " ".join([t[1] for t in text])
+    def read_name():
+        text = wh.read_screen(
+            top=0.55,
+            left=0.25,
+            width=0.15,
+            height=0.15,
+            brightness=0.7,
+            saturation=-0.5,
+        )
+        name = " ".join([t[1] for t in text])
+        return name
+
+    name = read_name()
     if not name:
         print("No gift name found")
         return False
@@ -600,6 +616,8 @@ def accept_gift(optional=False):
     if len(name) < 5:
         print("Short name", name)
     wh.click(*bounding_box_center(box))
+    if read_name() == name:
+        wh.click(*bounding_box_center(box))
     print("Accepting gift:", f"{name} ({ego_gifts[-1]["level"]})")
     return True
 
@@ -756,14 +774,16 @@ def handle_shop():
 
     if get_balance() >= 100:
         wh.click_text("Heal", top=0.5, width=0.3, height=0.3)
-        sleep(0.5)
         wh.click_text(
-            "All Sinners heal 20% HP and 15 SP", top=0.3, left=0.5, height=0.3
+            "All Sinners heal 20% HP and 15 SP",
+            top=0.3,
+            left=0.6,
+            height=0.3,
+            width=0.3,
         )
-        sleep(1)
-        wh.click_text("Leave", top=0.8, left=0.8, retry=False)
-        wh.click_text("Return", top=0.8, left=0.8, retry=False)
         sleep(0.5)
+        wh.click_text("Leave", top=0.8, left=0.8, retry=False)
+        wh.click_text("Return", top=0.8, left=0.8, retry=False, use_cache=True)
 
     text = wh.read_screen(top=0.3, left=0.4, width=0.5, height=0.5)
 
@@ -780,11 +800,11 @@ def handle_shop():
         ]
         return bool(purchased)
 
-    def replace_skill():
+    def replace_skill(balance: int):
         replace_skills = [t for t in text if "Ryoshu" in t[1] or "Skill Search" in t[1]]
         print(f"Replacements: {[t[1] for t in text if "Replace" in t[1]]}")
         for replace in replace_skills:
-            if is_purchased(replace):
+            if is_purchased(replace) or balance < 45:
                 continue
 
             x, y = bounding_box_center(replace[0])
@@ -828,9 +848,9 @@ def handle_shop():
                 post_click_delay=0.0,
             )
             confirm()
-            sleep(1)
             confirm(use_cache=True)
-            sleep(1)
+            sleep(0.5)
+        return balance
 
     def get_items():
         nonlocal text
@@ -873,7 +893,7 @@ def handle_shop():
         accept_gift(True)
         sleep(0.5)
 
-    def enhance():
+    def enhance(balance: int):
         to_enhance = [
             g
             for g in ego_gifts
@@ -884,7 +904,6 @@ def handle_shop():
         ]
         if to_enhance:
             costs = [enhance_costs[g["level"]] for g in to_enhance]
-            balance = get_balance()
             for cost, gift in zip(costs, to_enhance):
                 if cost <= balance:
                     print(
@@ -905,14 +924,15 @@ def handle_shop():
                         ]
                     )
                     balance -= cost
+        return balance
 
     def buy_items():
         sleep(0.5)
         items = get_items()
         balance = get_balance()
-        if balance >= 120:
-            replace_skill()
-            balance = get_balance()
+
+        balance = replace_skill(balance)
+        balance = enhance(balance)
 
         order = sorted(
             items,
@@ -931,23 +951,11 @@ def handle_shop():
                 items.remove(item)
                 items.append(item)
                 balance = get_balance()
-        enhance()
 
     global require_gift_calibration
     if require_gift_calibration:
         update_gift_list()
         require_gift_calibration = False
-
-    buy_items()
-    if get_balance() >= 120:
-        wh.click_text("Refresh", top=0.1, left=0.75, width=0.1, height=0.1)
-        buy_items()
-
-        while get_balance() >= 400:
-            wh.click_text("Keyword", top=0.1, left=0.85, width=0.1, height=0.1)
-            wh.click_text("POISE", top=0.6, left=0.2, width=0.1, height=0.1)
-            wh.click_text("Refresh", top=0.75, left=0.5, width=0.2, height=0.1)
-            buy_items()
 
     def fusion_menu(type="POISE"):
         wh.click_text("Fuse", top=0.5, left=0.2, width=0.1, height=0.1)
@@ -963,18 +971,12 @@ def handle_shop():
         sorted_gifts = [g for g in ego_gifts if " Vestige" in g["name"]] + [
             g for g in ego_gifts if " Vestige" not in g["name"]
         ]
-        if fuse_specials():
-            wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
-            sleep(0.5)
-            update_gift_list()
-            fusion_menu()
-            return
+        gifts.sort(key=lambda g: sorted_gifts.index(g))
         diff = 0
         for gift in gifts:
-            diff += click_gift(sorted_gifts.index(gift) - diff)
+            diff += click_gift(sorted_gifts.index(gift) - diff, scroll_back=False)
             ego_gifts.remove(gift)
-        if diff > 0:
-            scroll_gift(diff, down=False)
+        scroll_gift(diff, down=False)
         wh.click(0.1, 0.5, relative=True)
         wh.click_text("Fuse", top=0.8, left=0.6, width=0.1, height=0.1)
         sleep(0.5)
@@ -986,27 +988,28 @@ def handle_shop():
         )
         accept_gift()
         sleep(0.5)
+        fuse_specials()
 
-    def remove_preserved():
+    def to_fuse():
         excess_gifts = [
-            g
-            for g in ego_gifts
-            if g["level"] < 4 and not any(p in g["name"].lower() for p in poise_gifts)
+            g for g in ego_gifts if not any(p in g["name"].lower() for p in poise_gifts)
         ]
-        removed = []
-        l3 = [g for g in excess_gifts if g["level"] == 3]
-        if l3:
-            excess_gifts.remove(l3[0])
-            removed.append(l3[0])
-            l3.remove(l3[0])
-        if l3:
-            excess_gifts.remove(l3[0])
-            removed.append(l3[0])
-        l2 = [g for g in excess_gifts if g["level"] == 2]
-        if l2:
-            excess_gifts.remove(l2[0])
-            removed.append(l2[0])
-        return removed, excess_gifts
+        # Remove level 4 reforging if we already have Clear
+        if any("clear" in g["name"].lower() for g in ego_gifts):
+            excess_gifts = [g for g in excess_gifts if g["level"] < 4]
+
+        breakdown = [[], [], [], [], [], []]
+        for g in excess_gifts:
+            breakdown[g["level"]].append(g)
+
+        for recipe in recipes:
+            counts = [len(count) for count in breakdown]
+            for level in recipe:
+                counts[level] -= 1
+            if any(c < 0 for c in counts):
+                continue
+            return [breakdown[level].pop() for level in recipe]
+        return []
 
     def fuse_specials():
         def fusion_available():
@@ -1039,28 +1042,30 @@ def handle_shop():
             accept_gift()
             sleep(0.5)
             fused = True
-        return fused
 
-    removed, gifts = remove_preserved()
-    # Tier 4
-    fused = False
-    if len(removed) > 2:
-        fused = True
-        fusion_menu()
-    while len(removed) > 2:
-        fuse(removed)
-        removed, gifts = remove_preserved()
+        if fused:
+            wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
+            sleep(0.5)
+            update_gift_list()
+            fusion_menu()
 
-    if not fused and len(gifts) > 2:
-        fused = True
+    if to_fuse():
         fusion_menu()
-    while len(gifts) > 2:
-        fuse(gifts[:3])
-        removed, gifts = remove_preserved()
-    if fused:
+        fuse_specials()
+        while gifts := to_fuse():
+            fuse(gifts)
         wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
 
-    enhance()
+    buy_items()
+    if get_balance() >= 45:
+        wh.click_text("Refresh", top=0.1, left=0.75, width=0.1, height=0.1)
+        buy_items()
+
+        while get_balance() >= 400:
+            wh.click_text("Keyword", top=0.1, left=0.85, width=0.1, height=0.1)
+            wh.click_text("POISE", top=0.6, left=0.2, width=0.1, height=0.1)
+            wh.click_text("Refresh", top=0.75, left=0.5, width=0.2, height=0.1)
+            buy_items()
 
     wh.click_text("Leave", top=0.8, left=0.8)
     confirm()
@@ -1221,7 +1226,10 @@ def fight():
         kill_teammates()
 
     while True:
-        if wh.click_text("Win", top=0.6, left=0.5, height=0.3, retry=False):
+        if wh.click_text(
+            "Win", top=0.6, left=0.5, height=0.3, retry=False, click=False
+        ):
+            wh.press("p")
             sleep(0.1)
             wh.press("enter")
             sleep(5)
@@ -1250,7 +1258,7 @@ def fight():
             print("Fight Ended Due to Seeing Select")
             return
 
-        sleep(1)
+        sleep(0.5)
 
 
 def handle_encounter():
@@ -1259,18 +1267,6 @@ def handle_encounter():
     while not in_room_selection():
         sleep(0.5)
 
-    if not wh.match_template(
-        question_room_icon,
-        brightness=0.25,
-        saturation=0.5,
-        top=0.05,
-        left=0.5,
-        width=0.15,
-        height=0.85,
-        confidence_threshold=0.4,
-    ):
-        wh.drag(0.1, 0.5, 0.1, 0.55, relative=True)
-        sleep(0.5)
     room = wh.match_template(
         question_room_icon,
         brightness=0.25,
