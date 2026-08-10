@@ -513,11 +513,20 @@ class WindowHelper:
         if focus:
             self.focus_window()
 
-        if pre_click_delay_global > 0:
-            moveTo(x, y)
-            sleep(pre_click_delay_global)
+        if is_windows():
+            import ctypes
 
-        click(x, y)
+            ctypes.windll.user32.BlockInput(True)
+
+        try:
+            if pre_click_delay_global > 0:
+                moveTo(x, y)
+                sleep(pre_click_delay_global)
+
+            click(x, y)
+        finally:
+            if is_windows():
+                ctypes.windll.user32.BlockInput(False)
 
         if post_click_delay_global > 0:
             sleep(post_click_delay_global)
@@ -537,20 +546,29 @@ class WindowHelper:
 
         self.old_pointer_pos = position()
 
-        # Use pyautogui to perform a smooth drag
-        moveTo(int(x1), int(y1))
-        sleep(0.1)
-        mouseDown()
+        if is_windows():
+            import ctypes
 
-        # dragTo will move the cursor to the target over duration
-        moveTo(int(x2), int(y2), duration=duration)
-        if release:
-            mouseUp()
-        sleep(0.1)
+            ctypes.windll.user32.BlockInput(True)
 
-        if self.old_pointer_pos and release:
-            moveTo(int(self.old_pointer_pos[0]), int(self.old_pointer_pos[1]))
-            self.old_pointer_pos = None
+        try:
+            # Use pyautogui to perform a smooth drag
+            moveTo(int(x1), int(y1))
+            sleep(0.1)
+            mouseDown()
+
+            # dragTo will move the cursor to the target over duration
+            moveTo(int(x2), int(y2), duration=duration)
+            if release:
+                mouseUp()
+            sleep(0.1)
+
+            if self.old_pointer_pos and release:
+                moveTo(int(self.old_pointer_pos[0]), int(self.old_pointer_pos[1]))
+                self.old_pointer_pos = None
+        finally:
+            if is_windows():
+                ctypes.windll.user32.BlockInput(False)
 
     @crops
     def read_screen(
@@ -653,7 +671,7 @@ class WindowHelper:
             match, score, index = process.extractOne(
                 text.lower(),
                 [detected_text.lower() for _, detected_text, _ in results],
-                scorer=fuzz.WRatio,
+                scorer=fuzz.ratio,
             )
 
             if score > fuzz_threshold:

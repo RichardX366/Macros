@@ -7,6 +7,7 @@ from typing import cast
 from PIL import Image
 import cv2
 import numpy as np
+from rapidfuzz import fuzz
 
 from helpers import (
     WindowHelper,
@@ -52,21 +53,20 @@ poise_gifts = [
     "lucky",
     "cask",
     "finifugality",
+    "contaminated",
     "endorphin",
+    "ebulizer",
     "clover",
+    "emerald",
     "reminiscence",
     "broken blade",
-    "ebulizer",
     "old wooden",
     "cigarette",
     "recollection",
     "angel",
-    "emerald",
     "sack",
-    "share",
     "pom",
     "ornamental",
-    "pendant",
 ]
 enhance_costs = (0, 150, 180, 225, 300)
 enhanceable = ["clear", "tomb", "ebulizer", "emerald"]
@@ -220,6 +220,7 @@ def roll_for_pack(packs: list[str], hard: bool = False):
             wh.click(0.21, 0.3, relative=True)
             sleep(1)
             wh.read_screen(top=0.4, left=0.45, height=0.2)
+            attempts = 0
             while not any(
                 wh.click_text(
                     pack,
@@ -232,6 +233,13 @@ def roll_for_pack(packs: list[str], hard: bool = False):
                 )
                 for pack in packs
             ):
+                if attempts > 10:
+                    print("Failed to find packs after 10 attempts")
+                    wh.click(0.1, 0.1, relative=True)
+                    sleep(0.5)
+                    wh.drag(0.5, 0.3, 0.5, 0.6, relative=True)
+                    sleep(1)
+                    return
                 print("Found packs:", [t[1] for t in cast(list, wh.ocr_cache)])
                 x, y = position()
                 wh.drag(0.5, 0.7, 0.5, 0.35, relative=True, release=False)
@@ -239,6 +247,7 @@ def roll_for_pack(packs: list[str], hard: bool = False):
                 mouseUp()
                 moveTo(x, y)
                 wh.read_screen(top=0.45, left=0.45, height=0.2)
+                attempts += 1
             sleep(0.5)
             wh.click(0.6, 0.8, relative=True)
             sleep(0.5)
@@ -277,7 +286,13 @@ def kill_teammates():
         text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
         sleep(1)
 
-    while len(text) != 1:
+    while True:
+        if len(text) == 1:
+            sleep(0.5)
+            text = wh.read_screen(top=0.93, height=0.05)
+            text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+            if len(text) == 1:
+                break
         defense()
         sleep(3)
         text = wh.read_screen(top=0.93, height=0.05)
@@ -616,8 +631,8 @@ def accept_gift(optional=False):
     if len(name) < 5:
         print("Short name", name)
     wh.click(*bounding_box_center(box))
-    if read_name() == name:
-        wh.click(*bounding_box_center(box))
+    while read_name() == name:
+        confirm(mode="center")
     print("Accepting gift:", f"{name} ({ego_gifts[-1]["level"]})")
     return True
 
@@ -633,6 +648,20 @@ def confirm(optional=False, use_cache=False, click=True, mode=""):
         use_cache=use_cache,
         click=click,
     )
+
+
+def clickable_event_button():
+    button = np.array(wh.screenshot(top=0.8, left=0.8, brightness=0.5))
+    ratio = np.count_nonzero(button) / button.size
+    return ratio > 0.1
+
+
+def choices_result():
+    image = np.array(
+        wh.screenshot(top=0.1, left=0.55, width=0.1, height=0.1, brightness=0.1)
+    )
+    ratio = np.count_nonzero(image) / image.size
+    return ratio > 0.1
 
 
 question_room_icon = cast(
@@ -690,28 +719,42 @@ def enter():
 def advantage_check():
     from pyautogui import position, moveTo
 
-    order = ["Very High", "High", "Norma", "Low", "Very Low", "select"]
-    text = wh.read_screen(top=0.8, width=0.8, height=0.1)
+    order = ["very high", "high", "normal", "low", "very low", "unselectable"]
+    image1 = np.array(wh.screenshot(top=0.8, width=0.8, height=0.1, brightness=0.7))
+    image2 = np.array(
+        wh.screenshot(top=0.8, width=0.8, height=0.1, brightness=0.5, saturation=0.8)
+    )
+    text = wh.read_screen(
+        top=0.8, width=0.8, height=0.1, image=np.maximum(image1, image2)
+    )
     text.sort(key=lambda t: t[0][0][0])
-    text = [t for t in text if any(o in t[1] for o in order)]
     left = text[0][0][0][0]
     right = text[-1][0][1][0]
     advantages = []
-    for _, t, _ in text:
-        indices = [(t.find(o) if t.find(o) >= 0 else 999) for o in order]
+    text = " ".join(
+        [t for t in " ".join([t[1].lower() for t in text if t[1]]).split(" ") if t]
+    )
+    print("Advantages:", text)
+
+    def get_index(word: str):
+        for i in range(len(text) - len(word) + 1):
+            if fuzz.ratio(text[i : i + len(word)], word) > 80:
+                return i
+        return 9999
+
+    while any(get_index(o) < 9999 for o in order):
+        indices = [(get_index(o)) for o in order]
         min_index = indices.index(min(indices))
-        while min(indices) < 999:
-            advantages.append(order[min_index])
-            t = t.replace(order[min_index], "", 1)
-            indices = [(t.find(o) if t.find(o) >= 0 else 999) for o in order]
-            min_index = indices.index(min(indices))
-    step = (right - left) / (len(advantages))
+        advantages.append(order[min_index])
+        text = text[min(indices) + len(order[min_index]) :]
+
+    step = (right - left) / len(advantages)
     left += step / 2
 
     for o in order:
         if o in advantages:
             x = left + step * advantages.index(o)
-            y = text[0][0][1][1] + 0.02 * wh.height
+            y = 0.9 * wh.height
             wh.click(x, y)
             sleep(0.5)
             while not wh.click_text("Commence", top=0.8, left=0.8, retry=False):
@@ -727,11 +770,34 @@ def advantage_check():
                 height=0.2,
                 split_spaces=True,
             )
-            while not wh.click_text(
-                "Continue", top=0.8, left=0.8, click=False, retry=False
-            ) and not wh.click_text(
-                "Proceed", top=0.8, left=0.8, click=False, retry=False, use_cache=True
-            ):
+
+            x, y = position()
+
+            while True:
+                if not clickable_event_button():
+                    wh.click(
+                        0.1,
+                        0.5,
+                        relative=True,
+                        restore_position=False,
+                        pre_click_delay=0.0,
+                        post_click_delay=0.0,
+                    )
+                    continue
+
+                if wh.click_text(
+                    "Continue", top=0.8, left=0.8, click=False, retry=False
+                ) or wh.click_text(
+                    "Proceed",
+                    top=0.8,
+                    left=0.8,
+                    click=False,
+                    retry=False,
+                    use_cache=True,
+                ):
+                    moveTo(x, y)
+                    return
+
                 wh.click_text(
                     "SKIP",
                     top=0.8,
@@ -741,20 +807,6 @@ def advantage_check():
                     pre_click_delay=0.0,
                     post_click_delay=0.0,
                 )
-                x, y = position()
-                for _ in range(5):
-                    wh.click(
-                        0.1,
-                        0.5,
-                        relative=True,
-                        restore_position=False,
-                        pre_click_delay=0.0,
-                        post_click_delay=0.01,
-                    )
-                moveTo(x, y)
-
-            sleep(1)
-            return
 
 
 def handle_shop():
@@ -850,6 +902,7 @@ def handle_shop():
             confirm()
             confirm(use_cache=True)
             sleep(0.5)
+            balance = get_balance()
         return balance
 
     def get_items():
@@ -887,10 +940,14 @@ def handle_shop():
     def purchase(item):
         x, y = bounding_box_center(item["box"])
         wh.click(x, y - 0.06 * wh.height)
-        sleep(1)
-        wh.click_text("Purchase", top=0.6, left=0.5, width=0.2, height=0.3, retry=False)
-        sleep(1)
-        accept_gift(True)
+        sleep(0.5)
+        if wh.click_text(
+            "Purchase", top=0.6, left=0.5, width=0.2, height=0.3, retry=False
+        ):
+            sleep(1)
+            accept_gift(True)
+        else:
+            confirm(True, mode="center")
         sleep(0.5)
 
     def enhance(balance: int):
@@ -959,11 +1016,10 @@ def handle_shop():
 
     def fusion_menu(type="POISE"):
         wh.click_text("Fuse", top=0.5, left=0.2, width=0.1, height=0.1)
-        sleep(0.5)
         wh.click_text("By Tier", top=0.15, left=0.75, width=0.15, height=0.15)
         wh.click_text("Recent", top=0.3, left=0.8, width=0.1, height=0.1)
         wh.click(0.5, 0.3, relative=True)
-        wh.click_text(type, top=0.6, left=0.2, width=0.1, height=0.1)
+        wh.click_text(type, top=0.6, left=0.2, width=0.5, height=0.1)
         confirm()
         sleep(0.5)
 
@@ -1049,6 +1105,22 @@ def handle_shop():
             update_gift_list()
             fusion_menu()
 
+    if gifts := to_fuse():
+        if (
+            any("clear" in g["name"].lower() for g in ego_gifts)
+            and sum(g["level"] for g in gifts) == 3 + 3 + 2
+        ):
+            fusion_menu("SLASH")
+            fuse_specials()
+            print("Next T4 should be slash")
+            while (
+                any("clear" in g["name"].lower() for g in ego_gifts)
+                and sum(g["level"] for g in gifts) == 3 + 3 + 2
+            ):
+                fuse(gifts)
+                gifts = to_fuse()
+            wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
+
     if to_fuse():
         fusion_menu()
         fuse_specials()
@@ -1097,7 +1169,7 @@ def handle_shop():
 def question():
     from pyautogui import position, moveTo
 
-    sleep(1.5)
+    sleep(1)
     if wh.click_text(
         "Shop",
         top=0.1,
@@ -1121,100 +1193,106 @@ def question():
         return fight()
 
     battle_flag = False
+    x, y = position()
     while True:
-        wh.click_text(
-            "Skip",
-            top=0.8,
-            left=0.8,
-            retry=False,
-            pre_click_delay=0.0,
-            post_click_delay=0.0,
-        )
-        wh.click_text(
-            "Proceed",
-            top=0.8,
-            left=0.8,
-            use_cache=True,
-            retry=False,
-            pre_click_delay=0.0,
-            post_click_delay=0.0,
-        )
-        x, y = position()
-        for _ in range(5):
+        while clickable_event_button():
+            image = wh.screenshot(top=0.8, left=0.8)
+            wh.click(0.9, 0.9, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
+            text = wh.read_screen(top=0.8, left=0.8, image=image)
+            if any("continue" in t[1].lower() for t in text):
+                moveTo(x, y)
+                sleep(2)
+                if battle_flag:
+                    fight()
+                    sleep(0.5)
+                sleep(0.5)
+                return
+
+        for _ in range(3):
             wh.click(
                 0.1,
                 0.5,
                 relative=True,
                 restore_position=False,
                 pre_click_delay=0.0,
-                post_click_delay=0.01,
+                post_click_delay=0.0,
             )
-        moveTo(x, y)
-        if wh.click_text("Continue", top=0.8, left=0.8, use_cache=True, retry=False):
-            sleep(2)
-            if battle_flag:
-                fight()
-                sleep(0.5)
-            sleep(0.5)
-            return
 
-        if wh.click_text("Choices", click=False, left=0.5, height=0.8, retry=False):
-            text = wh.read_screen(left=0.5, height=0.8, use_cache=True)
-            text.pop(0)
-            text = wh.clump_ocr(text)
-
-            without_cursed = [t for t in text if not "cursed" in t[1].lower()]
-            if not without_cursed:
-                x, y = bounding_box_center(text[0][0])
-                wh.click(x, y)
-                continue
-
-            without_battle = [t for t in without_cursed if not "battle" in t[1].lower()]
-            if not without_battle:
-                x, y = bounding_box_center(without_cursed[0][0])
-                wh.click(x, y)
-                battle_flag = True
-                continue
-
-            wh.ocr_cache = without_battle
-
-            if not wh.click_text(
-                "level up",
-                use_cache=True,
-                includes=True,
+        if choices_result():
+            if wh.click_text(
+                "Choices",
+                click=False,
+                top=0.1,
                 left=0.5,
-                height=0.8,
+                width=0.2,
+                height=0.15,
                 retry=False,
             ):
+                text = wh.read_screen(left=0.5, height=0.8)
+                text.pop(0)
+                text = wh.clump_ocr(text)
+
+                without_cursed = [t for t in text if not "cursed" in t[1].lower()]
+                if not without_cursed:
+                    x, y = bounding_box_center(text[0][0])
+                    wh.click(x, y)
+                    continue
+
+                without_battle = [
+                    t for t in without_cursed if not "battle" in t[1].lower()
+                ]
+                if not without_battle:
+                    x, y = bounding_box_center(without_cursed[0][0])
+                    wh.click(x, y)
+                    battle_flag = True
+                    continue
+
+                wh.ocr_cache = without_battle
+
                 if not wh.click_text(
-                    "gain a",
+                    "level",
                     use_cache=True,
                     includes=True,
                     left=0.5,
                     height=0.8,
                     retry=False,
                 ):
-                    x, y = bounding_box_center(without_battle[0][0])
-                    wh.click(x, y)
-            # sleep(0.1)
+                    if not wh.click_text(
+                        "gain a",
+                        use_cache=True,
+                        includes=True,
+                        left=0.5,
+                        height=0.8,
+                        retry=False,
+                    ):
+                        x, y = bounding_box_center(without_battle[0][0])
+                        wh.click(x, y)
 
-        if wh.click_text(
-            "Advantage",
-            top=0.1,
-            left=0.7,
-            height=0.2,
-            width=0.2,
-            split_spaces=True,
-            retry=False,
-            fuzz_threshold=80,
-        ):
-            while not wh.read_screen(top=0.8, width=0.8, height=0.1):
-                wh.click(
-                    0.5, 0.5, relative=True, pre_click_delay=0.0, post_click_delay=0.0
-                )
-            advantage_check()
-        if in_room_selection():
-            return
+            if wh.click_text(
+                "Advantage",
+                top=0.1,
+                left=0.7,
+                height=0.2,
+                width=0.2,
+                split_spaces=True,
+                retry=False,
+                fuzz_threshold=80,
+                brightness=0.9,
+            ):
+                while not wh.read_screen(top=0.8, width=0.8, height=0.1):
+                    wh.click(
+                        0.1,
+                        0.5,
+                        relative=True,
+                        pre_click_delay=0.0,
+                        post_click_delay=0.0,
+                    )
+                sleep(0.5)
+                advantage_check()
+
+            if in_room_selection():
+                moveTo(x, y)
+                return
 
 
 def fight():
@@ -1224,6 +1302,30 @@ def fight():
     global killed_teammates
     if not killed_teammates:
         kill_teammates()
+
+    if last_floor == 2:
+        wh.click_text("Win", top=0.6, left=0.5, height=0.3, click=False)
+        wh.drag(0.4, 0.9, 0.4, 0.9, duration=0.8, relative=True)  # Ego Screen
+        wh.click(0.4, 0.5, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
+        wh.click(0.4, 0.5, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
+        wh.click(0.47, 0.9, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
+        wh.click(0.54, 0.9, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
+        wh.click(0.41, 0.8, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
+        sleep(1)
+        wh.click(0.46, 0.53, relative=True)
+        wh.click(0.48, 0.8, relative=True)
+        wh.click(0.49, 0.53, relative=True)
+        wh.click(0.53, 0.8, relative=True)
+        wh.click(0.52, 0.53, relative=True)
+        wh.press("enter")
+        sleep(5)
+        wh.click_text("Win", top=0.6, left=0.5, height=0.3, click=False)
+        wh.press("p")
+        sleep(0.1)
+        wh.press("p")
+        sleep(0.1)
+        wh.press("enter")
+        sleep(5)
 
     while True:
         if wh.click_text(
@@ -1258,8 +1360,6 @@ def fight():
             print("Fight Ended Due to Seeing Select")
             return
 
-        sleep(0.5)
-
 
 def handle_encounter():
     while accept_gift(True):
@@ -1291,6 +1391,7 @@ def handle_encounter():
         retry=False,
     ):
         wh.press("enter")
+        sleep(0.5)
         return question()
     wh.press("enter")
     sleep(1)
@@ -1373,3 +1474,9 @@ if __name__ == "__main__":
             t = time.time()
             run(args.floor - 1)
             print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
+        print("Would you like to run again? (y/n)")
+        while input().strip().lower() == "y":
+            t = time.time()
+            run()
+            print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
+            print("Would you like to run again? (y/n)")
