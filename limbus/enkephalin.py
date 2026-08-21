@@ -30,8 +30,6 @@ def redeem_enkephalin(wh: WindowHelper, use_lunacy=0):
     bounds: dict = {"top": 0.2, "left": 0.3, "height": 0.6, "width": 0.4}
     text = wh.read_screen(**bounds)
     confirm_box = [t for t in text if "Confirm" in t[1]][0][0]
-    owned_box = [t for t in text if "Owned" in t[1]][0][0]
-    use_boxes_box = [t for t in text if "Boxes" in t[1]][0][0]
 
     if use_lunacy:
         print("Refilling with Lunacy...")
@@ -41,9 +39,7 @@ def redeem_enkephalin(wh: WindowHelper, use_lunacy=0):
         wh.click_text("Modules", **bounds, use_cache=True)
 
     print("Clicking >> button...")
-    x = confirm_box[2][0]
-    y = bounding_box_center(owned_box)[1] + owned_box[0][1] - use_boxes_box[0][1]
-    wh.click(x, y, pre_click_delay=0.2)
+    wh.click(0.63, 0.47, relative=True, pre_click_delay=0.2)
 
     print("Confirming...")
     wh.click(*bounding_box_center(confirm_box))
