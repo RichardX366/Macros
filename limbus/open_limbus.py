@@ -10,6 +10,9 @@ def launch_limbus():
     if not is_windows():
         raise EnvironmentError("This function is only supported on Windows.")
 
+    if gw.getWindowsWithTitle("LimbusCompany"):
+        exit()
+
     process = Popen(
         [
             "%appdata%\\Microsoft\\Windows\\Start Menu\\Programs\\Steam\\Limbus Company.url"
