@@ -867,16 +867,19 @@ def handle_shop():
                 wh.click(0.25, 0.9, relative=True)
                 sleep(0.5)
 
-            wh.click_text(
+            if not wh.click_text(
                 "moderate",
                 top=0.2,
                 left=0.1,
                 width=0.8,
                 height=0.2,
                 includes=True,
+                retry=False,
                 pre_click_delay=0.0,
                 post_click_delay=0.0,
-            )
+            ):
+                wh.click_text("Return", top=0.8, left=0.8, retry=False)
+                continue
             wh.click_text(
                 "large",
                 top=0.2,
