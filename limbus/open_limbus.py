@@ -34,7 +34,7 @@ def launch_limbus():
     window.moveTo(leftmost_monitor["left"], leftmost_monitor["top"])
     sleep(0.1)
     window.resizeTo(leftmost_monitor["width"], leftmost_monitor["height"])
-    sleep(0.1)
+    sleep(0.5)
     window.maximize()
     sleep(0.1)
 

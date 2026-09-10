@@ -27,6 +27,13 @@ def battle():
             left=0.7,
             retry=False,
         ):
+            while wh.click_text(
+                "Confirm",
+                top=0.7,
+                left=0.7,
+                retry=False,
+            ):
+                sleep(0.5)
             return
         sleep(1)
 
