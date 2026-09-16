@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import re
 from time import sleep
 import time
+import traceback
 from typing import cast
 
 from PIL import Image
@@ -311,6 +312,10 @@ def kill_teammates():
 def defense():
     text = wh.read_screen(top=0.93, height=0.05)
     text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+    while not text:
+        sleep(1)
+        text = wh.read_screen(top=0.93, height=0.05)
+        text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
     text.sort(key=lambda t: t[0][0][0])
 
     global unit_distance
@@ -1467,19 +1472,23 @@ if __name__ == "__main__":
 
     easy = args.easy
 
-    if args.infinite:
-        while True:
-            t = time.time()
-            run()
-            print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
-    else:
-        for _ in range(args.runs):
-            t = time.time()
-            run(args.floor - 1)
-            print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
-        print("Would you like to run again? (y/n)")
-        while input().strip().lower() == "y":
-            t = time.time()
-            run()
-            print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
+    try:
+        if args.infinite:
+            while True:
+                t = time.time()
+                run()
+                print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
+        else:
+            for _ in range(args.runs):
+                t = time.time()
+                run(args.floor - 1)
+                print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
             print("Would you like to run again? (y/n)")
+            while input().strip().lower() == "y":
+                t = time.time()
+                run()
+                print("Run completed in", round((time.time() - t) / 60, 2), "minutes")
+                print("Would you like to run again? (y/n)")
+    except:
+        traceback.print_exc()
+        sleep(99999)
