@@ -1453,8 +1453,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-n", "--runs", type=int, default=0)
     parser.add_argument("-f", "--floor", type=int, default=1)
-    parser.add_argument("-i", "--infinite", type=bool, default=False)
-    parser.add_argument("-e", "--easy", type=bool, default=False)
+    parser.add_argument("-i", "--infinite", action="store_true")
+    parser.add_argument("-e", "--easy", action="store_true")
     args = parser.parse_args()
 
     if args.runs == 0 and not args.infinite:
