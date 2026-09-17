@@ -36,6 +36,7 @@ def redeem_enkephalin(wh: WindowHelper, use_lunacy=0):
         wh.click_text("Use Lunacy", **bounds, use_cache=True)
         for _ in range(use_lunacy):
             wh.click(*bounding_box_center(confirm_box))
+            sleep(0.5)
         wh.click_text("Modules", **bounds, use_cache=True)
 
     print("Clicking >> button...")

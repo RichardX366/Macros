@@ -39,7 +39,7 @@ def battle():
 
 
 def main():
-    redeem_enkephalin(wh, 1)
+    redeem_enkephalin(wh, 3)
 
     wh.click(0.1, 0.1, relative=True)  # Click outside to close the Enkephalin screen
 
@@ -60,6 +60,11 @@ def main():
     print("Handling Thread Luxcavation...")
     wh.click_text("Thread", top=0.4, width=0.2, height=0.2)
     sleep(0.5)
+    wh.click_text("Consecutive Battle", top=0.3, left=0.2, width=0.2, height=0.1)
+    sleep(0.5)
+    for _ in range(2):
+        wh.click(0.34, 0.36, relative=True)
+        sleep(0.5)
     wh.click_text("Skip Battle", top=0.65, left=0.2, width=0.2, height=0.2)
     sleep(0.5)
     wh.click_text("Skip Battle", top=0.55, left=0.5, width=0.2, height=0.2)

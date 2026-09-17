@@ -287,6 +287,9 @@ def kill_teammates():
         text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
         sleep(1)
 
+    global unit_distance
+    unit_distance = 0.0
+
     while True:
         if len(text) == 1:
             sleep(0.5)
