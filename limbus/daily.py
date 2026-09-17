@@ -81,7 +81,7 @@ def main():
     print("Opening Limbus Pass...")
     wh.click_text("Window", top=0.5, left=0.6, width=0.2)
     sleep(0.5)
-    wh.click_text("UNTIL SEASON 8 UPDATE", top=0.3, left=0.7, width=0.2, height=0.2)
+    wh.click_text("SEASON 8 LIMBUS PASS", top=0.2, left=0.7, width=0.2, height=0.2)
     sleep(0.5)
 
     print("Claiming Limbus Pass missions...")
