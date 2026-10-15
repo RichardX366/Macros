@@ -74,7 +74,11 @@ def main():
     wh.click_text("Confirm", top=0.7, left=0.7)
     sleep(1)
     wh.focus_window()
+    sleep(0.1)
     wh.press("esc")
+    sleep(0.5)
+    wh.press("esc")
+    sleep(0.1)
     wh.restore_previous_window()
     sleep(0.5)
 

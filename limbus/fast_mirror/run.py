@@ -33,7 +33,7 @@ packs = [
     ["Chicke"],
     ["Hatred"],
     ["Line 2"],
-    ["Line 4", "Line 1", "Line 3", "District"],
+    ["Line 4", "Line 1", "Line 3"],
 ]
 difficulties = [True, True, True, True]
 
@@ -49,47 +49,47 @@ poise_gifts = [
     "spiderweb",
     "clear",
     "tomb",
-    "commemorative",
-    "ragged bamboo",
-    "lucky",
-    "cask",
-    "finifugality",
-    "contaminated",
+    "sundered",
+    "emerald",
     "endorphin",
     "ebulizer",
+    "commemorative",
+    "lucky",
+    "finifugality",
+    "contaminated",
     "clover",
-    "emerald",
-    "reminiscence",
-    "broken blade",
-    "old wooden",
     "cigarette",
     "recollection",
     "angel",
+    "cask",
+    "reminiscence",
+    "old wooden",
     "sack",
     "pom",
     "ornamental",
 ]
+necessary_gifts = poise_gifts[:7]
+necessary_levels = [3, 4, 2, 4, 1, 3, 3]
 enhance_costs = (0, 150, 180, 225, 300)
 enhanceable = ["clear", "tomb", "ebulizer", "emerald"]
 currently_enhanced = set()
-recipes = [
-    [3, 3, 2],  # 4
-    [4, 2, 2],  # 4
-    [4, 3, 1],  # 4
-    [4, 3, 2],  # 4
-    [2, 2, 2],  # 3
-    [2, 1, 1],  # 2
-]
+recipes = {
+    4: [[3, 3, 2], [4, 2, 2], [4, 3, 1], [4, 3, 2]],
+    3: [[2, 2, 2]],
+    2: [[2, 1, 1]],
+    1: [[1, 1, 1]],
+}
 unit_distance = 0.0
 killed_teammates = False
 ego_gifts = []
 require_gift_calibration = False
+skills_remaining = [3, 2]
 
 # Helpers
 
 
 def in_room_selection():
-    text = wh.read_screen(left=0.7, height=0.2, width=0.2, brightness=0.3)
+    text = wh.read_screen(left=0.7, height=0.2, width=0.198, brightness=0.3)
     if len([t[1] for t in text if re.sub(r"\D", "", t[1]).isnumeric()]) >= 2:
         text = wh.read_screen(
             left=0.3, height=0.2, width=0.4, confidence_threshold=0.0, brightness=0.3
@@ -201,7 +201,7 @@ def handle_gift():
         return "Dungeon Complete"
 
 
-def roll_for_pack(packs: list[str], hard: bool = False):
+def roll_for_pack(packs: list[str], hard: bool = False, location=0):
     wh.click_text(
         "NORMAL" if hard else "HARD", left=0.6, height=0.2, width=0.2, retry=False
     )
@@ -221,34 +221,44 @@ def roll_for_pack(packs: list[str], hard: bool = False):
             wh.click(0.21, 0.3, relative=True)
             sleep(1)
             wh.read_screen(top=0.4, left=0.45, height=0.2)
-            attempts = 0
-            while not any(
-                wh.click_text(
-                    pack,
-                    top=0.4,
-                    left=0.45,
-                    height=0.2,
-                    includes=True,
-                    retry=False,
-                    use_cache=True,
-                )
-                for pack in packs
-            ):
-                if attempts > 10:
-                    print("Failed to find packs after 10 attempts")
-                    wh.click(0.1, 0.1, relative=True)
-                    sleep(0.5)
-                    wh.drag(0.5, 0.3, 0.5, 0.6, relative=True)
-                    sleep(1)
-                    return
-                print("Found packs:", [t[1] for t in cast(list, wh.ocr_cache)])
+            if location:
+                scrolls = location // 5
                 x, y = position()
-                wh.drag(0.5, 0.7, 0.5, 0.35, relative=True, release=False)
-                sleep(0.2)
-                mouseUp()
+                for _ in range(scrolls):
+                    wh.drag(0.5, 0.7, 0.5, 0.35, relative=True, release=False)
+                    sleep(0.2)
+                    mouseUp()
                 moveTo(x, y)
-                wh.read_screen(top=0.45, left=0.45, height=0.2)
-                attempts += 1
+                wh.click(0.48 + 0.1 * (location % 5), 0.4, relative=True)
+            else:
+                attempts = 0
+                while not any(
+                    wh.click_text(
+                        pack,
+                        top=0.4,
+                        left=0.45,
+                        height=0.2,
+                        includes=True,
+                        retry=False,
+                        use_cache=True,
+                    )
+                    for pack in packs
+                ):
+                    if attempts > 10:
+                        print("Failed to find packs after 10 attempts")
+                        wh.click(0.1, 0.1, relative=True)
+                        sleep(0.5)
+                        wh.drag(0.5, 0.3, 0.5, 0.6, relative=True)
+                        sleep(1)
+                        return
+                    print("Found packs:", [t[1] for t in cast(list, wh.ocr_cache)])
+                    x, y = position()
+                    wh.drag(0.5, 0.7, 0.5, 0.35, relative=True, release=False)
+                    sleep(0.2)
+                    mouseUp()
+                    moveTo(x, y)
+                    wh.read_screen(top=0.45, left=0.45, height=0.2)
+                    attempts += 1
             sleep(0.5)
             wh.click(0.6, 0.8, relative=True)
             sleep(0.5)
@@ -712,7 +722,7 @@ def enter():
     wh.click_text("Stone Tomb", top=0.4, left=0.6, width=0.2, height=0.2)
     wh.click(0.8, 0.8, relative=True)
     accept_gift()
-    wh.click_text("Keyword", top=0.2, left=0.45, width=0.1, height=0.1, includes=True)
+    wh.click_text("Keyword", top=0.2, left=0.5, width=0.1, height=0.1, includes=True)
     sleep(0.5)
     wh.click(0.55, 0.8, relative=True)
     wh.click(0.85, 0.8, relative=True)
@@ -861,10 +871,32 @@ def handle_shop():
         return bool(purchased)
 
     def replace_skill(balance: int):
-        replace_skills = [t for t in text if "Ryoshu" in t[1] or "Skill Search" in t[1]]
-        print(f"Replacements: {[t[1] for t in text if "Replace" in t[1]]}")
+        replace_skills = sorted(
+            [t for t in text if "Ryoshu" in t[1] or "Skill Search" in t[1]],
+            key=lambda t: -t[0][0][0],
+        )
+        print(f"Replacements: {[t[1] for t in replace_skills]}")
         for replace in replace_skills:
-            if is_purchased(replace) or balance < 45:
+            if is_purchased(replace) or sum(skills_remaining) == 0:
+                continue
+
+            target = ""
+            multiplier = 1
+
+            if "Skill Search" in replace[1]:
+                multiplier = 2
+
+            if skills_remaining[0] > 0 and balance >= 120 * multiplier:
+                target = "tremendous"
+                skills_remaining[0] -= 1
+            elif skills_remaining[1] > 0 and balance >= 75 * multiplier:
+                target = "large"
+                skills_remaining[1] -= 1
+            elif skills_remaining[0] > 0 and balance >= 45 * multiplier:
+                target = "moderate"
+                skills_remaining[0] -= 1
+                skills_remaining[1] += 1
+            else:
                 continue
 
             x, y = bounding_box_center(replace[0])
@@ -876,7 +908,7 @@ def handle_shop():
                 sleep(0.5)
 
             if not wh.click_text(
-                "moderate",
+                target,
                 top=0.2,
                 left=0.1,
                 width=0.8,
@@ -888,28 +920,6 @@ def handle_shop():
             ):
                 wh.click_text("Return", top=0.8, left=0.8, retry=False)
                 continue
-            wh.click_text(
-                "large",
-                top=0.2,
-                left=0.1,
-                width=0.8,
-                height=0.2,
-                includes=True,
-                use_cache=True,
-                pre_click_delay=0.0,
-                post_click_delay=0.0,
-            )
-            wh.click_text(
-                "tremendous",
-                top=0.2,
-                left=0.1,
-                width=0.8,
-                height=0.2,
-                includes=True,
-                use_cache=True,
-                pre_click_delay=0.0,
-                post_click_delay=0.0,
-            )
             confirm()
             confirm(use_cache=True)
             sleep(0.5)
@@ -1000,7 +1010,10 @@ def handle_shop():
         balance = get_balance()
 
         balance = replace_skill(balance)
-        balance = enhance(balance)
+        try:
+            balance = enhance(balance)
+        except:
+            print("Enhancement failed")
 
         order = sorted(
             items,
@@ -1069,7 +1082,19 @@ def handle_shop():
         for g in excess_gifts:
             breakdown[g["level"]].append(g)
 
-        for recipe in recipes:
+        required_levels = set()
+        for gift, level in zip(necessary_gifts, necessary_levels):
+            if any(gift in g["name"].lower() for g in ego_gifts):
+                continue
+            required_levels.add(level)
+
+        culled_recipes = [
+            recipe
+            for level in sorted(required_levels, reverse=True)
+            for recipe in recipes[level]
+        ]
+
+        for recipe in culled_recipes:
             counts = [len(count) for count in breakdown]
             for level in recipe:
                 counts[level] -= 1
@@ -1116,6 +1141,15 @@ def handle_shop():
             update_gift_list()
             fusion_menu()
 
+    def keep_refreshing():
+        should_refresh = sum(skills_remaining) > 0 or any(
+            any(gift in g["name"].lower() for g in ego_gifts)
+            for gift in necessary_gifts
+        )
+        if not should_refresh:
+            print("No more refreshing needed")
+        return should_refresh
+
     if gifts := to_fuse():
         if (
             any("clear" in g["name"].lower() for g in ego_gifts)
@@ -1128,26 +1162,38 @@ def handle_shop():
                 any("clear" in g["name"].lower() for g in ego_gifts)
                 and sum(g["level"] for g in gifts) == 3 + 3 + 2
             ):
-                fuse(gifts)
-                gifts = to_fuse()
+                try:
+                    fuse(gifts)
+                    gifts = to_fuse()
+                except:
+                    break
             wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
 
     if to_fuse():
         fusion_menu()
         fuse_specials()
         while gifts := to_fuse():
-            fuse(gifts)
+            try:
+                fuse(gifts)
+            except:
+                break
         wh.click_text("Close", top=0.8, left=0.35, width=0.1, height=0.1)
 
     buy_items()
-    if get_balance() >= 45:
+    if get_balance() >= 45 and keep_refreshing():
         wh.click_text("Refresh", top=0.1, left=0.75, width=0.1, height=0.1)
         buy_items()
 
-        while get_balance() >= 400:
-            wh.click_text("Keyword", top=0.1, left=0.85, width=0.1, height=0.1)
-            wh.click_text("POISE", top=0.6, left=0.2, width=0.1, height=0.1)
-            wh.click_text("Refresh", top=0.75, left=0.5, width=0.2, height=0.1)
+        while get_balance() >= 400 and keep_refreshing():
+            if all(
+                any(gift in g["name"].lower() for g in ego_gifts)
+                for gift in necessary_gifts
+            ):
+                wh.click_text("Refresh", top=0.1, left=0.75, width=0.1, height=0.1)
+            else:
+                wh.click_text("Keyword", top=0.1, left=0.85, width=0.1, height=0.1)
+                wh.click_text("POISE", top=0.6, left=0.2, width=0.1, height=0.1)
+                wh.click_text("Refresh", top=0.75, left=0.5, width=0.2, height=0.1)
             buy_items()
 
     wh.click_text("Leave", top=0.8, left=0.8)
@@ -1169,9 +1215,15 @@ def handle_shop():
         return result
 
     if easy:
-        roll_for_pack(easy_packs[last_floor], easy_difficulties[last_floor])
+        roll_for_pack(
+            easy_packs[last_floor],
+            easy_difficulties[last_floor],
+            19 if last_floor == 3 else 0,
+        )
     else:
-        roll_for_pack(packs[last_floor], difficulties[last_floor])
+        roll_for_pack(
+            packs[last_floor], difficulties[last_floor], 19 if last_floor == 3 else 0
+        )
     last_floor += 1
     sleep(3)
     floor_complete = True
@@ -1307,9 +1359,10 @@ def question():
 
 
 def fight():
-    wh.click_text(
+    while wh.click_text(
         "To Battle", top=0.75, left=0.8, height=0.2, includes=True, retry=False
-    )
+    ):
+        sleep(2.0)
     global killed_teammates
     if not killed_teammates:
         kill_teammates()
@@ -1354,9 +1407,11 @@ def fight():
             return "Dungeon Complete"
 
         if in_room_selection():
-            print("Fight Ended Due to Seeing Numbers")
             sleep(0.5)
-            return
+            if in_room_selection():
+                print("Fight Ended Due to Seeing Numbers")
+                sleep(0.5)
+                return
 
         if wh.click_text(
             "SELECT",
@@ -1422,11 +1477,12 @@ def complete_floor():
 
 def run(floor=0):
     print("Begin Run")
-    global killed_teammates, last_floor, currently_enhanced, ego_gifts, require_gift_calibration
+    global killed_teammates, last_floor, currently_enhanced, ego_gifts, require_gift_calibration, skills_remaining
     killed_teammates = floor > 0
     last_floor = floor
     currently_enhanced = set()
     ego_gifts = []
+    skills_remaining = [3, 2]
     if not in_room_selection():
         enter()
     else:
