@@ -10,7 +10,10 @@ from helpers import WindowHelper
 
 
 def main():
-    wh = WindowHelper("LimbusCompany")
+    try:
+        wh = WindowHelper("LimbusCompany")
+    except Exception:
+        wh = WindowHelper("iPhone Mirroring")
 
     parser = ArgumentParser()
     parser.add_argument("-t", "--top", type=float, default=0.0)
@@ -44,14 +47,20 @@ def main():
             x2 = max(p[0] for p in pts)
             y2 = max(p[1] for p in pts)
 
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            color = (
+                255
+                if len(img.shape) == 2
+                else (0, 255, 0, 255) if img.shape[2] == 4 else (0, 255, 0)
+            )
+
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
             cv2.putText(
                 img,
                 text,
                 (x1, max(y1 - 5, 0)),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
-                (0, 255, 0),
+                color,
                 2,
             )
 
