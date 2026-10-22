@@ -22,8 +22,8 @@ def click_upgrade():
 
 
 def plan(upgrade: bool, cats: list[bool]):
-    if cats[8]:
-        click_cat(8)
+    if cats[7]:
+        click_cat(7)
     elif cats[9]:
         click_cat(9)
     elif cats[5]:

@@ -17,8 +17,8 @@ def click_cat(c: int):
         0.33 + 0.08 * (c % 5),
         0.75 + 0.1 * (c // 5),
         relative=True,
-        pre_click_delay=0.05,
-        post_click_delay=0.05,
+        pre_click_delay=0.0,
+        post_click_delay=0.0,
     )
     cat_counts[c] += 1
 
@@ -30,13 +30,15 @@ def click_upgrade():
 
 
 def plan(upgrade: bool, cats: list[bool]):
-    if cat_counts[8] > 0 and cat_counts[9] > 0:
-        if cats[8]:
-            click_cat(8)
+    if cat_counts[7] > 0 and cat_counts[9] > 0:
+        if cats[7]:
+            click_cat(7)
+        elif cats[6]:
+            click_cat(6)
         elif cats[9]:
             click_cat(9)
-        elif cats[7]:
-            click_cat(7)
+        elif cats[8]:
+            click_cat(8)
         elif upgrade and level < 8:
             click_upgrade()
         elif cats[3]:
@@ -51,8 +53,8 @@ def plan(upgrade: bool, cats: list[bool]):
             click_cat(2)
         return
 
-    if cats[8]:
-        click_cat(8)
+    if cats[7]:
+        click_cat(7)
     elif cats[9]:
         click_cat(9)
     elif cats[3]:
