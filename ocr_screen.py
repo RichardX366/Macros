@@ -74,8 +74,14 @@ def main():
             np.linspace(0, h, 11),
             ["0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"],
         )
+        ax = plt.gca()
+        ax.set_xticks(np.linspace(0, w, 51), minor=True)
+        ax.set_yticks(np.linspace(0, h, 51), minor=True)
         plt.grid(
             True, which="major", color="white", linestyle="--", linewidth=0.8, alpha=0.6
+        )
+        plt.grid(
+            True, which="minor", color="white", linestyle=":", linewidth=0.4, alpha=0.3
         )
         plt.show()
         wh.set_window_box()
