@@ -18,9 +18,7 @@ def redeem_enkephalin(wh: WindowHelper, use_lunacy=0):
                 for t in wh.read_screen(top=0.8, left=0.35, width=0.2, use_cache=True)
             ],
         )
-        wh.click_text(
-            "FACE", top=0.6, left=0.3, height=0.2, width=0.4, includes=True, retry=False
-        )
+        wh.click(0.6, 0.65, relative=True)
         sleep(5)
 
     print("Opening Enkephalin screen...")

@@ -41,7 +41,7 @@ easy_packs = [
     ["Chicke"],
     ["Hatred"],
     ["Line 2"],
-    ["Line 4", "Line 1", "Line 3", "District"],
+    ["Line 4", "Line 1", "Line 3"],
 ]
 easy_difficulties = [False, False, True, True]
 
@@ -574,7 +574,9 @@ def update_gift_list():
         scroll_gift()
         return scroll_signature() != old
 
-    def add_gift(i):
+    last_name = ""
+
+    def add_gift(i, iter=0):
         wh.click(
             *index_to_gift_coord(i),
             relative=True,
@@ -585,6 +587,12 @@ def update_gift_list():
             top=0.2, left=0.2, width=0.25, height=0.2, brightness=0.7, saturation=-0.5
         )
         name = " ".join([t[1] for t in text])
+        nonlocal last_name
+        if not name or (
+            name == last_name and " Vestige" not in name and " Uestige" not in name
+        ):
+            return add_gift(i, iter + 1) if iter < 3 else None
+        last_name = name
         gift = {
             "name": name,
             "level": get_gift_level(i, blobs),
@@ -732,6 +740,16 @@ def enter():
         "SELECT", top=0.1, left=0.3, width=0.4, height=0.2, click=False, includes=True
     )
     roll_for_pack(["Gamblers"], not easy)
+
+
+def get_advantage_text():
+    image1 = np.array(wh.screenshot(top=0.8, width=0.8, height=0.1, brightness=0.7))
+    image2 = np.array(
+        wh.screenshot(top=0.8, width=0.8, height=0.1, brightness=0.5, saturation=0.8)
+    )
+    return wh.read_screen(
+        top=0.8, width=0.8, height=0.1, image=np.maximum(image1, image2)
+    )
 
 
 def advantage_check():
@@ -993,8 +1011,14 @@ def handle_shop():
                         cost,
                     )
                     sorted_gifts = [
-                        g for g in ego_gifts if " Vestige" not in g["name"]
-                    ] + [g for g in ego_gifts if " Vestige" in g["name"]]
+                        g
+                        for g in ego_gifts
+                        if (" Vestige" not in g["name"] and " Uestige" not in g["name"])
+                    ] + [
+                        g
+                        for g in ego_gifts
+                        if (" Vestige" in g["name"] or " Uestige" in g["name"])
+                    ]
                     power_up_gift(sorted_gifts.index(gift))
                     currently_enhanced.add(
                         [name for name in enhanceable if name in gift["name"].lower()][
@@ -1342,7 +1366,7 @@ def question():
                 fuzz_threshold=80,
                 brightness=0.9,
             ):
-                while not wh.read_screen(top=0.8, width=0.8, height=0.1):
+                while not get_advantage_text():
                     wh.click(
                         0.1,
                         0.5,
@@ -1400,20 +1424,20 @@ def fight():
             wh.press("enter")
             sleep(5)
 
-        if wh.click_text("SKIP", top=0.8, left=0.8, retry=False):
+        elif wh.click_text("SKIP", top=0.8, left=0.8, retry=False):
             question()
 
-        if handle_gift() == "Dungeon Complete":
+        elif handle_gift() == "Dungeon Complete":
             return "Dungeon Complete"
 
-        if in_room_selection():
+        elif in_room_selection():
             sleep(0.5)
             if in_room_selection():
                 print("Fight Ended Due to Seeing Numbers")
                 sleep(0.5)
                 return
 
-        if wh.click_text(
+        elif wh.click_text(
             "SELECT",
             top=0.1,
             left=0.3,
@@ -1425,6 +1449,18 @@ def fight():
         ):
             print("Fight Ended Due to Seeing Select")
             return
+
+        elif wh.click_text(
+            "Retry",
+            top=0.45,
+            left=0.45,
+            width=0.15,
+            height=0.05,
+            retry=False,
+            includes=True,
+            brightness=0.9,
+        ):
+            wh.click(0.5, 0.75, relative=True)
 
 
 def handle_encounter():
