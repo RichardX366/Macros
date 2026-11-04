@@ -111,13 +111,15 @@ mac_clipboard = None
 
 
 def mac_screenshot(window: int = 0):
-    get_mac_clipboard()
+    # get_mac_clipboard()
     if window:
-        subprocess.run(["screencapture", "-c", "-l", str(window)])
+        subprocess.run(["screencapture", "-o", "-l", str(window), "screenshot.png"])
     else:
-        subprocess.run(["screencapture", "-c"])
-    img = ImageGrab.grabclipboard()
-    restore_mac_clipboard()
+        subprocess.run(["screencapture", "-o", "screenshot.png"])
+    # img = ImageGrab.grabclipboard()
+    # restore_mac_clipboard()
+    img = Image.open("screenshot.png")
+    os.remove("screenshot.png")
     if not isinstance(img, Image.Image):
         return mac_screenshot(window)
     return cast(Image.Image, img)
@@ -263,6 +265,7 @@ class WindowHelper:
             self.height = window["height"]
             self.pid = window["pid"]
             self.windowNumber = window["windowNumber"]
+            self.dpi = 2.0
 
     def __init__(self, title: str):
         self.title = title
@@ -516,7 +519,7 @@ class WindowHelper:
         if is_windows():
             import ctypes
 
-            ctypes.windll.user32.BlockInput(True)
+            ctypes.windll.user32.BlockInput(True)  # type: ignore
 
         try:
             if pre_click_delay_global > 0:
@@ -526,7 +529,7 @@ class WindowHelper:
             click(x, y)
         finally:
             if is_windows():
-                ctypes.windll.user32.BlockInput(False)
+                ctypes.windll.user32.BlockInput(False)  # type: ignore
 
         if post_click_delay_global > 0:
             sleep(post_click_delay_global)
@@ -549,7 +552,7 @@ class WindowHelper:
         if is_windows():
             import ctypes
 
-            ctypes.windll.user32.BlockInput(True)
+            ctypes.windll.user32.BlockInput(True)  # type: ignore
 
         try:
             # Use pyautogui to perform a smooth drag
@@ -568,7 +571,7 @@ class WindowHelper:
                 self.old_pointer_pos = None
         finally:
             if is_windows():
-                ctypes.windll.user32.BlockInput(False)
+                ctypes.windll.user32.BlockInput(False)  # type: ignore
 
     @crops
     def read_screen(
