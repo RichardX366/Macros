@@ -1462,6 +1462,11 @@ def fight():
         ):
             wh.click(0.5, 0.75, relative=True)
 
+        else:
+            wh.click_text(
+                "To Battle", top=0.75, left=0.8, height=0.2, includes=True, retry=False
+            )
+
 
 def handle_encounter():
     while accept_gift(True):
