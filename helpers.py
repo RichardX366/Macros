@@ -693,7 +693,7 @@ class WindowHelper:
         if cache_image and not use_cache:
             if self.image_cache.get(cache_image) is not None:
                 img = self.image_cache[cache_image]
-            elif Path(cache_image).is_file():
+            elif Path(".cache/" + cache_image).is_file():
                 img = cv2.imread(
                     ".cache/" + cache_image,
                     (
@@ -702,8 +702,6 @@ class WindowHelper:
                         else cv2.IMREAD_COLOR
                     ),
                 )
-                if img is not None:
-                    self.image_cache[cache_image] = img
             else:
                 img = None
             if img is not None:

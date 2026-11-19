@@ -1422,9 +1422,17 @@ def fight():
         kill_teammates()
 
     if last_floor == 2:
-        wh.click_text(
-            "Win", top=0.6, left=0.5, height=0.3, click=False, cache_image="win.png"
-        )
+        while not wh.click_text(
+            "Win",
+            top=0.6,
+            left=0.5,
+            height=0.3,
+            click=False,
+            retry=False,
+            cache_image="win.png",
+        ):
+            to_battle()
+            sleep(0.5)
         wh.drag(0.4, 0.9, 0.4, 0.9, duration=0.8, relative=True)  # Ego Screen
         wh.click(0.4, 0.5, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
         wh.click(0.4, 0.5, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
@@ -1485,6 +1493,8 @@ def fight():
             left=0.3,
             width=0.4,
             height=0.2,
+            brightness=0.5,
+            saturation=0.2,
             click=False,
             includes=True,
             retry=False,
