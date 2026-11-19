@@ -46,7 +46,7 @@ def main():
     print("Opening Luxcavation screen...")
     wh.click_text("Drive", top=0.8, left=0.7, width=0.2)
     sleep(0.5)
-    wh.click_text("Luxcavation", top=0.2, left=0.25, width=0.2, height=0.15)
+    wh.click_text("Luxcavation", top=0.1, left=0.25, width=0.2, height=0.15)
     sleep(0.5)
 
     print("Handling XP Luxcavation...")
