@@ -89,10 +89,24 @@ skills_remaining = [3, 2]
 
 
 def in_room_selection():
-    text = wh.read_screen(left=0.7, height=0.2, width=0.198, brightness=0.3)
+    img = np.array(
+        wh.screenshot(
+            top=0.07, left=0.7, height=0.05, width=0.198, color=(190, 165, 130)
+        )
+    )
+    if np.count_nonzero(img) / img.size < 0.05:
+        return False
+
+    text = wh.read_screen(
+        top=0.07, left=0.7, height=0.05, width=0.198, color=(190, 165, 130)
+    )
     if len([t[1] for t in text if re.sub(r"\D", "", t[1]).isnumeric()]) >= 2:
         text = wh.read_screen(
-            left=0.3, height=0.2, width=0.4, confidence_threshold=0.0, brightness=0.3
+            left=0.3,
+            height=0.2,
+            width=0.4,
+            confidence_threshold=0.0,
+            color=(190, 165, 130),
         )
         flat = []
         for t in text:
@@ -111,6 +125,7 @@ def handle_gift():
         height=0.2,
         click=False,
         retry=False,
+        cache_image="reward_card.png",
     ):
         print("Reward Card")
         sleep(0.5)
@@ -137,9 +152,19 @@ def handle_gift():
             accept_gift(True)
             sleep(5)
 
-    text = wh.read_screen(top=0.2, left=0.1, width=0.8, height=0.1)
-    acquires = [t for t in text if "Acquire" in t[1] and "Gift" in t[1]]
-    if acquires:
+    if wh.click_text(
+        "Acquire",
+        top=0.2,
+        left=0.1,
+        width=0.8,
+        height=0.1,
+        includes=True,
+        retry=False,
+        click=False,
+        cache_image="acquire.png",
+    ):
+        text = wh.read_screen(top=0.2, left=0.1, width=0.8, height=0.1)
+        acquires = [t for t in text if "Acquire" in t[1] and "Gift" in t[1]]
         gifts = []
         current_gift = {"owned": False, "name": "", "box": ()}
         for t in sorted(text, key=lambda x: x[0][1][0]):
@@ -196,6 +221,7 @@ def handle_gift():
         height=0.2,
         click=False,
         retry=False,
+        cache_image="victory.png",
     ):
         print("Dungeon Complete")
         return "Dungeon Complete"
@@ -289,13 +315,19 @@ def roll_for_pack(packs: list[str], hard: bool = False, location=0):
     sleep(1)
 
 
+def get_team_hp():
+    img = np.array(wh.screenshot(top=0.93, height=0.05, color=(234, 74, 37)))
+    if np.count_nonzero(img) / img.size < 0.003:
+        return []
+    text = wh.read_screen(top=0.93, height=0.05, color=(234, 74, 37))
+    return [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+
+
 def kill_teammates():
-    text = wh.read_screen(top=0.93, height=0.05)
-    text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+    text = get_team_hp()
     while len(text) == 0:
-        text = wh.read_screen(top=0.93, height=0.05)
-        text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
         sleep(1)
+        text = get_team_hp()
 
     global unit_distance
     unit_distance = 0.0
@@ -303,17 +335,14 @@ def kill_teammates():
     while True:
         if len(text) == 1:
             sleep(0.5)
-            text = wh.read_screen(top=0.93, height=0.05)
-            text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+            text = get_team_hp()
             if len(text) == 1:
                 break
         defense()
         sleep(3)
-        text = wh.read_screen(top=0.93, height=0.05)
-        text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+        text = get_team_hp()
         while len(text) == 0:
-            text = wh.read_screen(top=0.93, height=0.05)
-            text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+            text = get_team_hp()
             if in_room_selection():
                 return
             sleep(1)
@@ -323,12 +352,10 @@ def kill_teammates():
 
 
 def defense():
-    text = wh.read_screen(top=0.93, height=0.05)
-    text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+    text = get_team_hp()
     while not text:
         sleep(1)
-        text = wh.read_screen(top=0.93, height=0.05)
-        text = [t for t in text if len(re.sub(r"\D", "", t[1])) > 2]
+        text = get_team_hp()
     text.sort(key=lambda t: t[0][0][0])
 
     global unit_distance
@@ -399,10 +426,9 @@ def index_to_gift_coord(index: int):
 
 
 def get_gift_levels(color=(0xF7, 0xC1, 0x00), top=0.0, left=0.0, width=0.0, height=0.0):
-    arr = np.array(
-        wh.screenshot(top=top, left=left, width=width, height=height).convert("RGB")
+    binary = np.array(
+        wh.screenshot(top=top, left=left, width=width, height=height, color=color)
     )
-    binary = (np.all(abs(arr - color) < 20, axis=2) * 255).astype(np.uint8)
 
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -622,7 +648,7 @@ def power_up_gift(index: int):
     sleep(0.5)
     wh.click_text("By Tier", top=0.15, left=0.75, width=0.15, height=0.15)
     wh.click_text("Recent", top=0.3, left=0.8, width=0.1, height=0.1)
-    wh.click(*index_to_gift_coord(index), relative=True)
+    click_gift(index)
     wh.click_text("Power", top=0.7, left=0.5, width=0.2, height=0.2, includes=True)
     sleep(0.5)
     wh.click(0.8, 0.72, relative=True)
@@ -693,6 +719,20 @@ def choices_result():
 question_room_icon = cast(
     np.ndarray, cv2.imread("limbus/fast_mirror/question.png", cv2.IMREAD_GRAYSCALE)
 )
+
+# Buttons
+
+
+def to_battle():
+    return wh.click_text(
+        "To Battle",
+        top=0.75,
+        left=0.8,
+        height=0.2,
+        includes=True,
+        retry=False,
+        cache_image="to_battle.png",
+    )
 
 
 # Overarching functions
@@ -1268,15 +1308,7 @@ def question():
         includes=True,
     ):
         return handle_shop()
-    if wh.click_text(
-        "To Battle",
-        top=0.75,
-        left=0.8,
-        height=0.2,
-        click=False,
-        retry=False,
-        includes=True,
-    ):
+    if to_battle():
         return fight()
 
     battle_flag = False
@@ -1383,16 +1415,16 @@ def question():
 
 
 def fight():
-    while wh.click_text(
-        "To Battle", top=0.75, left=0.8, height=0.2, includes=True, retry=False
-    ):
+    while to_battle():
         sleep(2.0)
     global killed_teammates
     if not killed_teammates:
         kill_teammates()
 
     if last_floor == 2:
-        wh.click_text("Win", top=0.6, left=0.5, height=0.3, click=False)
+        wh.click_text(
+            "Win", top=0.6, left=0.5, height=0.3, click=False, cache_image="win.png"
+        )
         wh.drag(0.4, 0.9, 0.4, 0.9, duration=0.8, relative=True)  # Ego Screen
         wh.click(0.4, 0.5, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
         wh.click(0.4, 0.5, relative=True, pre_click_delay=0.0, post_click_delay=0.0)
@@ -1407,7 +1439,9 @@ def fight():
         wh.click(0.52, 0.53, relative=True)
         wh.press("enter")
         sleep(5)
-        wh.click_text("Win", top=0.6, left=0.5, height=0.3, click=False)
+        wh.click_text(
+            "Win", top=0.6, left=0.5, height=0.3, click=False, cache_image="win.png"
+        )
         wh.press("p")
         sleep(0.1)
         wh.press("p")
@@ -1417,14 +1451,22 @@ def fight():
 
     while True:
         if wh.click_text(
-            "Win", top=0.6, left=0.5, height=0.3, retry=False, click=False
+            "Win",
+            top=0.6,
+            left=0.5,
+            height=0.3,
+            retry=False,
+            click=False,
+            cache_image="win.png",
         ):
             wh.press("p")
             sleep(0.1)
             wh.press("enter")
             sleep(5)
 
-        elif wh.click_text("SKIP", top=0.8, left=0.8, retry=False):
+        elif wh.click_text(
+            "SKIP", top=0.8, left=0.8, retry=False, cache_image="skip.png"
+        ):
             question()
 
         elif handle_gift() == "Dungeon Complete":
@@ -1446,6 +1488,7 @@ def fight():
             click=False,
             includes=True,
             retry=False,
+            cache_image="select.png",
         ):
             print("Fight Ended Due to Seeing Select")
             return
@@ -1459,13 +1502,12 @@ def fight():
             retry=False,
             includes=True,
             brightness=0.9,
+            cache_image="retry.png",
         ):
             wh.click(0.5, 0.75, relative=True)
 
         else:
-            wh.click_text(
-                "To Battle", top=0.75, left=0.8, height=0.2, includes=True, retry=False
-            )
+            to_battle()
 
 
 def handle_encounter():

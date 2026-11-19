@@ -10,6 +10,7 @@ from time import sleep
 from typing import Any, cast
 from functools import wraps
 
+from pathlib import Path
 import cv2
 import easyocr
 import numpy as np
@@ -36,6 +37,7 @@ def crops(func):
         width=0.0,
         height=0.0,
         saturation=0.0,
+        color=None,
         brightness=0.0,
         **kwargs,
     ):
@@ -53,6 +55,7 @@ def crops(func):
             width=width,
             height=height,
             saturation=saturation,
+            color=color,
             brightness=brightness,
             **kwargs,
         )
@@ -236,6 +239,8 @@ def pause_keybind(key="ctrl+]"):
 
 
 class WindowHelper:
+    image_cache: dict[str, np.ndarray] = {}
+
     def set_window_box(self):
         if is_windows():
             from windows_screenshot import windows_screenshot
@@ -293,10 +298,13 @@ class WindowHelper:
         height=0.0,
         brightness=0.0,
         saturation=0.0,
+        color=None,
     ) -> Image.Image:
         """
         Capture a screenshot of the window and store it in memory.
         Handles per-monitor DPI scaling on multi-monitor setups.
+        If color is an RGB triple, return a binary mask of pixels whose
+        channels are each within 20 of it, combined with any other filters.
 
         Returns:
             PIL.Image: The screenshot as a PIL Image object in memory
@@ -353,7 +361,15 @@ class WindowHelper:
                     )[1],
                 )
 
-            if self.brightness or self.saturation:
+            if color is not None:
+                arr = np.array(image.convert("RGB"), dtype=np.int16)
+                color_mask = (
+                    np.all(np.abs(arr - np.asarray(color, dtype=np.int16)) < 20, axis=2)
+                    * 255
+                ).astype(np.uint8)
+                mask = cv2.bitwise_and(mask, color_mask)
+
+            if self.brightness or self.saturation or color is not None:
                 image = Image.fromarray(mask)
 
             return image
@@ -398,6 +414,7 @@ class WindowHelper:
         height=0.0,
         brightness=0.0,
         saturation=0.0,
+        color=None,
     ):
         sc1 = self.screenshot().convert("L")
         sleep(duration)
@@ -586,6 +603,7 @@ class WindowHelper:
         height=0.0,
         brightness=0.0,
         saturation=0.0,
+        color=None,
     ):
         """
         Perform OCR on the current window's screenshot and return detected text with bounding boxes. Returns a list of tuples containing bounding box coordinates, detected text, and confidence score.
@@ -636,15 +654,82 @@ class WindowHelper:
         click=True,
         split_spaces=False,
         retry=True,
+        cache_image="",
         top=0.0,
         left=0.0,
         width=0.0,
         height=0.0,
         brightness=0.0,
         saturation=0.0,
+        color=None,
         pre_click_delay=0.1,
         post_click_delay=0.2,
     ):
+        def handle_hit(box):
+            if cache_image:
+                img = np.array(
+                    self.screenshot(
+                        top=box[0][1] / self.height,
+                        left=box[0][0] / self.width,
+                        width=(box[2][0] - box[0][0]) / self.width,
+                        height=(box[2][1] - box[0][1]) / self.height,
+                        brightness=brightness,
+                        saturation=saturation,
+                        color=color,
+                    )
+                )
+                cv2.imwrite(".cache/" + cache_image, img)
+                self.image_cache[cache_image] = img
+
+                print(f"Saved screenshot to .cache/{cache_image}")
+
+            click_x, click_y = bounding_box_center(box)
+
+            if click:
+                self.click(click_x, click_y)
+
+            return (box, detected_text, confidence)
+
+        if cache_image and not use_cache:
+            if self.image_cache.get(cache_image) is not None:
+                img = self.image_cache[cache_image]
+            elif Path(cache_image).is_file():
+                img = cv2.imread(
+                    ".cache/" + cache_image,
+                    (
+                        cv2.IMREAD_GRAYSCALE
+                        if brightness or saturation
+                        else cv2.IMREAD_COLOR
+                    ),
+                )
+                if img is not None:
+                    self.image_cache[cache_image] = img
+            else:
+                img = None
+            if img is not None:
+                img = cast(np.ndarray, img)
+                if self.image_cache.get(cache_image) is None:
+                    self.image_cache[cache_image] = img
+                while True:
+                    results = self.match_template(
+                        img,
+                        0.8,
+                        top=top,
+                        left=left,
+                        width=width,
+                        height=height,
+                        brightness=brightness,
+                        saturation=saturation,
+                    )
+                    if results:
+                        x, y = results
+                        if click:
+                            self.click(x, y)
+                        return ([(x, y) * 4], text, 1.0)
+                    if not retry:
+                        return False
+                    sleep(0.5)
+
         while True:
             results = self.read_screen(confidence_threshold, True, use_cache)
 
@@ -664,12 +749,7 @@ class WindowHelper:
             if includes:
                 for box, detected_text, confidence in results:
                     if text.lower() in detected_text.lower():
-                        click_x, click_y = bounding_box_center(box)
-
-                        if click:
-                            self.click(click_x, click_y)
-
-                        return (box, detected_text, confidence)
+                        return handle_hit(box)
 
             match, score, index = process.extractOne(
                 text.lower(),
@@ -680,12 +760,7 @@ class WindowHelper:
             if score > fuzz_threshold:
                 box, detected_text, confidence = results[index]
                 # print(detected_text, confidence, score)
-                click_x, click_y = bounding_box_center(box)
-
-                if click:
-                    self.click(click_x, click_y)
-
-                return (box, detected_text, confidence)
+                return handle_hit(box)
             else:
                 if retry and not use_cache:
                     sleep(0.5)
@@ -788,6 +863,7 @@ class WindowHelper:
         height=0.0,
         brightness=0.0,
         saturation=0.0,
+        color=None,
     ) -> tuple[float, float] | None:
         image = np.array(self.screenshot())
 
