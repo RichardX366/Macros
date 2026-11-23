@@ -1,11 +1,19 @@
 from argparse import ArgumentParser
+from copy import copy
+import os
+from pathlib import Path
 import re
+import sys
+import threading
 from time import sleep
 import time
 import traceback
 from typing import cast
+from urllib.parse import quote
+from urllib.request import urlopen
 
 from PIL import Image
+from dotenv import load_dotenv
 import cv2
 import numpy as np
 from rapidfuzz import fuzz
@@ -17,6 +25,8 @@ from helpers import (
     pause_keybind,
     download_screenshot,
 )
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 try:
     wh = WindowHelper("LimbusCompany")
@@ -86,6 +96,53 @@ require_gift_calibration = False
 skills_remaining = [3, 2]
 
 # Helpers
+
+
+def send_bark_notification(title: str, body: str):
+    key = os.environ.get("BARK_KEY") or ""
+    if not key:
+        print("bark: BARK_KEY is missing", file=sys.stderr, flush=True)
+        return
+    url = (
+        f"https://api.day.app/{quote(key, safe='')}/"
+        f"{quote(title, safe='')}/{quote(body, safe='')}?group=example&ttl=600"
+    )
+    try:
+        with urlopen(url, timeout=10):
+            pass
+    except Exception:
+        print("bark: notification failed", file=sys.stderr, flush=True)
+
+
+def monitor_screen_activity():
+    # Keep screenshot settings independent without initializing another OCR reader.
+    monitor_wh = copy(wh)
+    monitor_wh.bounds = None
+    monitor_wh.brightness = 0.0
+    monitor_wh.saturation = 0.0
+    consecutive = 0
+
+    while True:
+        try:
+            rate = monitor_wh.get_diff_rate(duration=60)
+        except Exception:
+            consecutive = 0
+            traceback.print_exc()
+            sleep(5)
+            continue
+
+        consecutive = consecutive + 1 if rate < 0.01 else 0
+        if consecutive >= 3:
+            print("Three low screen-difference readings; exiting.", flush=True)
+            send_bark_notification(
+                "Fast Mirror stopped",
+                "Screen difference was under 0.01 for three consecutive "
+                "one-minute intervals. Exiting the program.",
+            )
+            # sys.exit() would only stop this worker, leaving the main loop running.
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(1)
 
 
 def in_room_selection():
@@ -1623,6 +1680,10 @@ if __name__ == "__main__":
             args.easy = True
 
     easy = args.easy
+
+    threading.Thread(
+        target=monitor_screen_activity, name="screen-activity-monitor", daemon=True
+    ).start()
 
     try:
         if args.infinite:

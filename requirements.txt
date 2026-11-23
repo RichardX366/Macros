@@ -10,3 +10,4 @@ rapidfuzz
 keyboard
 pygb
 fast_ctypes_screenshots
+python-dotenv
